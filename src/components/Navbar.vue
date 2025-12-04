@@ -13,17 +13,17 @@
           <span class="nav-icon">🏠</span>
           Dashboard
         </router-link>
-        <router-link to="/matches" class="nav-link" @click="closeMobileMenu">
-          <span class="nav-icon">⚽</span>
-          Partidos
+        <router-link to="/clubs" class="nav-link" @click="closeMobileMenu">
+          <span class="nav-icon">🏆</span>
+          Clubes
         </router-link>
         <router-link to="/players" class="nav-link" @click="closeMobileMenu">
           <span class="nav-icon">👥</span>
           Jugadores
         </router-link>
-        <router-link to="/clubs" class="nav-link" @click="closeMobileMenu">
-          <span class="nav-icon">🏆</span>
-          Clubes
+        <router-link to="/finance" class="nav-link" @click="closeMobileMenu">
+          <span class="nav-icon">💰</span>
+          Finanzas
         </router-link>
       </div>
 

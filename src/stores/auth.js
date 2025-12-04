@@ -2,7 +2,16 @@ import { reactive, computed } from 'vue';
 import { authAPI } from '../api';
 
 const state = reactive({
-    user: JSON.parse(localStorage.getItem('user')) || null,
+    user: (() => {
+        try {
+            const stored = localStorage.getItem('user');
+            if (!stored || stored === 'undefined') return null;
+            return JSON.parse(stored);
+        } catch (e) {
+            localStorage.removeItem('user');
+            return null;
+        }
+    })(),
     accessToken: localStorage.getItem('accessToken') || null,
     refreshToken: localStorage.getItem('refreshToken') || null,
     sessionId: localStorage.getItem('sessionId') || null,
@@ -17,14 +26,24 @@ export const useAuthStore = () => {
         state.error = null;
 
         try {
+
+
             const response = await authAPI.login(credentials);
-            const { user, accessToken, refreshToken, sessionId } = response.data;
+
+            const { usuario, tokens, clubes } = response.data;
+            const user = usuario;
+            const accessToken = tokens.access_token;
+            const refreshToken = tokens.refresh_token;
+            const sessionId = tokens.session_id;
 
             // Guardar en localStorage
             localStorage.setItem('user', JSON.stringify(user));
             localStorage.setItem('accessToken', accessToken);
             localStorage.setItem('refreshToken', refreshToken);
             localStorage.setItem('sessionId', sessionId);
+            if (clubes && clubes.length > 0) {
+                localStorage.setItem('userClubs', JSON.stringify(clubes));
+            }
 
             // Actualizar estado
             state.user = user;
@@ -32,6 +51,7 @@ export const useAuthStore = () => {
             state.refreshToken = refreshToken;
             state.sessionId = sessionId;
             state.isAuthenticated = true;
+            state.userClubs = clubes;
 
             return response.data;
         } catch (error) {
@@ -47,14 +67,24 @@ export const useAuthStore = () => {
         state.error = null;
 
         try {
+
+
             const response = await authAPI.register(userData);
-            const { user, accessToken, refreshToken, sessionId } = response.data;
+
+            const { usuario, tokens, clubes } = response.data;
+            const user = usuario;
+            const accessToken = tokens.access_token;
+            const refreshToken = tokens.refresh_token;
+            const sessionId = tokens.session_id;
 
             // Guardar en localStorage
             localStorage.setItem('user', JSON.stringify(user));
             localStorage.setItem('accessToken', accessToken);
             localStorage.setItem('refreshToken', refreshToken);
             localStorage.setItem('sessionId', sessionId);
+            if (clubes && clubes.length > 0) {
+                localStorage.setItem('userClubs', JSON.stringify(clubes));
+            }
 
             // Actualizar estado
             state.user = user;

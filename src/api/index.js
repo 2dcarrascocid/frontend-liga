@@ -50,6 +50,7 @@ apiClient.interceptors.response.use(
                     });
 
                     const { accessToken } = response.data;
+                    console.log("accessToken", accessToken)
                     localStorage.setItem('accessToken', accessToken);
 
                     // Reintentar la petición original
@@ -76,21 +77,50 @@ export default apiClient;
 export const authAPI = {
     login: (credentials) => apiClient.post('/auth/login', credentials),
     register: (userData) => apiClient.post('/auth/register', userData),
-    logout: (sessionId) => apiClient.post('/auth/logout', { sessionId }),
-    refreshToken: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken }),
+    logout: (sessionId) => apiClient.post('/auth/logout', { sessionId }), // Note: Not explicitly in serverless.yml
+    refreshToken: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken }), // Note: Not explicitly in serverless.yml
     googleLogin: (googleData) => apiClient.post('/auth/google', googleData),
+};
+
+// ==================== CLUBS API ====================
+export const clubsAPI = {
+    getAll: (params) => apiClient.get('/clubes', { params }),
+    create: (clubData) => apiClient.post('/clubes', clubData),
+    // The following are not explicitly in serverlessClubes.yml but kept for future use
+    getById: (id) => apiClient.get(`/clubes/${id}`),
+    update: (clubData) => apiClient.put('/clubes', clubData),
+    delete: (id) => apiClient.delete(`/clubes/${id}`),
 };
 
 // ==================== PLAYERS API ====================
 export const playersAPI = {
-    getAll: (params) => apiClient.get('/jugadores', { params }),
+    // Updated to match /clubes/{clubId}/jugadores
+    getAll: (clubId, params) => apiClient.get(`/clubes/${clubId}/jugadores`, { params }),
+    create: (clubId, playerData) => apiClient.post(`/clubes/${clubId}/jugadores`, playerData),
+
+    // The following are not explicitly in serverlessJugadores.yml
     getById: (id) => apiClient.get(`/jugadores/${id}`),
-    create: (playerData) => apiClient.post('/jugadores', playerData),
     update: (playerData) => apiClient.put('/jugadores/actualizar', playerData),
     delete: (id) => apiClient.delete(`/jugadores/${id}`),
 };
 
+// ==================== FINANCE API ====================
+export const financeAPI = {
+    // Updated to match /clubes/{clubId}/finanzas/movimientos
+    getTransactions: (clubId, params) => apiClient.get(`/clubes/${clubId}/finanzas/movimientos`, { params }),
+    createTransaction: (clubId, data) => apiClient.post(`/clubes/${clubId}/finanzas/movimientos`, data),
+
+    // New endpoint found in serverlessFinanzas.yml
+    closeMonth: (clubId, data) => apiClient.post(`/clubes/${clubId}/finanzas/cierre`, data),
+
+    // The following are not explicitly in serverlessFinanzas.yml
+    updateTransaction: (data) => apiClient.put('/finanzas', data),
+    deleteTransaction: (id) => apiClient.delete(`/finanzas/${id}`),
+};
+
 // ==================== MATCHES API ====================
+// Removed as per user instruction
+/*
 export const matchesAPI = {
     search: (params) => apiClient.get('/partidos/buscar', { params }),
     getPending: (params) => apiClient.get('/partidos/pendientes', { params }),
@@ -114,25 +144,11 @@ export const matchesAPI = {
     getPendingRequests: (params) => apiClient.get('/partidos/solicitudes-pendientes', { params }),
     respondRequest: (data) => apiClient.put('/partidos/solicitud/responder', data),
 };
-
-// ==================== CLUBS API ====================
-export const clubsAPI = {
-    getAll: (params) => apiClient.get('/clubes', { params }),
-    getById: (id) => apiClient.get(`/clubes/${id}`),
-    create: (clubData) => apiClient.post('/clubes', clubData),
-    update: (clubData) => apiClient.put('/clubes', clubData),
-    delete: (id) => apiClient.delete(`/clubes/${id}`),
-};
-
-// ==================== FINANCE API ====================
-export const financeAPI = {
-    getTransactions: (params) => apiClient.get('/finanzas', { params }),
-    createTransaction: (data) => apiClient.post('/finanzas', data),
-    updateTransaction: (data) => apiClient.put('/finanzas', data),
-    deleteTransaction: (id) => apiClient.delete(`/finanzas/${id}`),
-};
+*/
 
 // ==================== PARAMETERS API ====================
+// Removed as per user instruction
+/*
 export const parametersAPI = {
     // Organizations
     getOrganizations: () => apiClient.get('/parametros/organizations'),
@@ -150,3 +166,4 @@ export const parametersAPI = {
     getCategories: (params) => apiClient.get('/parametros/categories', { params }),
     createCategory: (data) => apiClient.post('/parametros/categories', data),
 };
+*/

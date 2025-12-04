@@ -5,12 +5,10 @@ import { useAuthStore } from '../stores/auth';
 const Login = () => import('../views/Login.vue');
 const Register = () => import('../views/Register.vue');
 const Dashboard = () => import('../views/Dashboard.vue');
-const Matches = () => import('../views/Matches.vue');
-const MatchDetail = () => import('../views/MatchDetail.vue');
-const CreateMatch = () => import('../views/CreateMatch.vue');
 const Players = () => import('../views/Players.vue');
 const Clubs = () => import('../views/Clubs.vue');
 const Profile = () => import('../views/Profile.vue');
+const Finance = () => import('../views/Finance.vue');
 
 const routes = [
     {
@@ -36,24 +34,6 @@ const routes = [
         meta: { requiresAuth: true },
     },
     {
-        path: '/matches',
-        name: 'Matches',
-        component: Matches,
-        meta: { requiresAuth: true },
-    },
-    {
-        path: '/matches/create',
-        name: 'CreateMatch',
-        component: CreateMatch,
-        meta: { requiresAuth: true },
-    },
-    {
-        path: '/matches/:id',
-        name: 'MatchDetail',
-        component: MatchDetail,
-        meta: { requiresAuth: true },
-    },
-    {
         path: '/players',
         name: 'Players',
         component: Players,
@@ -63,6 +43,12 @@ const routes = [
         path: '/clubs',
         name: 'Clubs',
         component: Clubs,
+        meta: { requiresAuth: true },
+    },
+    {
+        path: '/finance',
+        name: 'Finance',
+        component: Finance,
         meta: { requiresAuth: true },
     },
     {
