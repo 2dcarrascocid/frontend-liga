@@ -1,4 +1,4 @@
-import { reactive, computed } from 'vue';
+import { reactive, toRefs } from 'vue';
 import { authAPI } from '../api';
 
 const state = reactive({
@@ -8,51 +8,70 @@ const state = reactive({
             if (!stored || stored === 'undefined') return null;
             return JSON.parse(stored);
         } catch (e) {
-            localStorage.removeItem('user');
             return null;
         }
     })(),
     accessToken: localStorage.getItem('accessToken') || null,
     refreshToken: localStorage.getItem('refreshToken') || null,
-    sessionId: localStorage.getItem('sessionId') || null,
+    org: (() => {
+        try {
+            const stored = localStorage.getItem('org');
+            if (!stored || stored === 'undefined') return null;
+            return JSON.parse(stored);
+        } catch (e) {
+            return null;
+        }
+    })(),
+    orgs: (() => {
+        try {
+            const stored = localStorage.getItem('orgs');
+            if (!stored || stored === 'undefined') return [];
+            return JSON.parse(stored);
+        } catch (e) {
+            return [];
+        }
+    })(),
     isAuthenticated: !!localStorage.getItem('accessToken'),
     loading: false,
     error: null,
 });
 
 export const useAuthStore = () => {
-    const login = async (credentials) => {
+    
+    const setSession = (data) => {
+        const { access_token, refresh_token, user, orgs } = data;
+        
+        state.accessToken = access_token;
+        state.refreshToken = refresh_token;
+        state.user = user;
+        state.orgs = orgs || [];
+        state.isAuthenticated = true;
+        
+        localStorage.setItem('accessToken', access_token);
+        localStorage.setItem('refreshToken', refresh_token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        if (orgs && orgs.length > 0) {
+            localStorage.setItem('orgs', JSON.stringify(orgs));
+            // Default to first org if not set
+            if (!state.org) {
+                state.org = orgs[0];
+                localStorage.setItem('org', JSON.stringify(state.org));
+            }
+        } else {
+            localStorage.removeItem('orgs');
+            localStorage.removeItem('org');
+            state.orgs = [];
+            state.org = null;
+        }
+    };
+
+    const loginLocal = async (credentials) => {
         state.loading = true;
         state.error = null;
-
         try {
-
-
-            const response = await authAPI.login(credentials);
-
-            const { usuario, tokens, clubes } = response.data;
-            const user = usuario;
-            const accessToken = tokens.access_token;
-            const refreshToken = tokens.refresh_token;
-            const sessionId = tokens.session_id;
-
-            // Guardar en localStorage
-            localStorage.setItem('user', JSON.stringify(user));
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', refreshToken);
-            localStorage.setItem('sessionId', sessionId);
-            if (clubes && clubes.length > 0) {
-                localStorage.setItem('userClubs', JSON.stringify(clubes));
-            }
-
-            // Actualizar estado
-            state.user = user;
-            state.accessToken = accessToken;
-            state.refreshToken = refreshToken;
-            state.sessionId = sessionId;
-            state.isAuthenticated = true;
-            state.userClubs = clubes;
-
+            const response = await authAPI.loginLocal(credentials);
+            setSession(response.data);
             return response.data;
         } catch (error) {
             state.error = error.response?.data?.message || 'Error al iniciar sesión';
@@ -62,91 +81,83 @@ export const useAuthStore = () => {
         }
     };
 
-    const register = async (userData) => {
+    const loginGoogle = async (idToken) => {
         state.loading = true;
         state.error = null;
-
         try {
-
-
-            const response = await authAPI.register(userData);
-
-            const { usuario, tokens, clubes } = response.data;
-            const user = usuario;
-            const accessToken = tokens.access_token;
-            const refreshToken = tokens.refresh_token;
-            const sessionId = tokens.session_id;
-
-            // Guardar en localStorage
-            localStorage.setItem('user', JSON.stringify(user));
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', refreshToken);
-            localStorage.setItem('sessionId', sessionId);
-            if (clubes && clubes.length > 0) {
-                localStorage.setItem('userClubs', JSON.stringify(clubes));
-            }
-
-            // Actualizar estado
-            state.user = user;
-            state.accessToken = accessToken;
-            state.refreshToken = refreshToken;
-            state.sessionId = sessionId;
-            state.isAuthenticated = true;
-
+            const response = await authAPI.loginGoogle({ id_token: idToken });
+            setSession(response.data);
             return response.data;
         } catch (error) {
-            state.error = error.response?.data?.message || 'Error al registrarse';
+            state.error = error.response?.data?.message || 'Error al iniciar sesión con Google';
             throw error;
         } finally {
             state.loading = false;
         }
     };
 
-    const logout = async () => {
+    const loginFacebook = async (accessToken) => {
         state.loading = true;
-
+        state.error = null;
         try {
-            if (state.sessionId) {
-                await authAPI.logout(state.sessionId);
-            }
+            // Adapt payload based on backend requirement, user said "{ access_token } o { id_token }"
+            const response = await authAPI.loginFacebook({ access_token: accessToken });
+            setSession(response.data);
+            return response.data;
         } catch (error) {
-            console.error('Error al cerrar sesión:', error);
+            state.error = error.response?.data?.message || 'Error al iniciar sesión con Facebook';
+            throw error;
         } finally {
-            // Limpiar localStorage
-            localStorage.removeItem('user');
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('sessionId');
-
-            // Limpiar estado
-            state.user = null;
-            state.accessToken = null;
-            state.refreshToken = null;
-            state.sessionId = null;
-            state.isAuthenticated = false;
             state.loading = false;
         }
     };
 
-    const updateUser = (userData) => {
-        state.user = { ...state.user, ...userData };
-        localStorage.setItem('user', JSON.stringify(state.user));
+    const bootstrap = async (data) => {
+        state.loading = true;
+        state.error = null;
+        try {
+            const response = await authAPI.bootstrap(data);
+            const { org } = response.data;
+            
+            state.org = org;
+            state.orgs = [org]; // Assuming bootstrap creates the first org
+            
+            localStorage.setItem('org', JSON.stringify(org));
+            localStorage.setItem('orgs', JSON.stringify(state.orgs));
+            
+            return response.data;
+        } catch (error) {
+            state.error = error.response?.data?.message || 'Error al crear organismo';
+            throw error;
+        } finally {
+            state.loading = false;
+        }
+    };
+
+    const logout = () => {
+        state.user = null;
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.org = null;
+        state.orgs = [];
+        state.isAuthenticated = false;
+        
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('org');
+        localStorage.removeItem('orgs');
+        
+        // Redirect is handled by router or caller
     };
 
     return {
-        // State
+        ...toRefs(state),
         state,
-
-        // Getters
-        user: computed(() => state.user),
-        isAuthenticated: computed(() => state.isAuthenticated),
-        loading: computed(() => state.loading),
-        error: computed(() => state.error),
-
-        // Actions
-        login,
-        register,
-        logout,
-        updateUser,
+        loginLocal,
+        loginGoogle,
+        loginFacebook,
+        bootstrap,
+        logout
     };
 };

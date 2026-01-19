@@ -30,43 +30,18 @@ apiClient.interceptors.request.use(
 // Interceptor para manejar errores de autenticación
 apiClient.interceptors.response.use(
     (response) => response,
-    async (error) => {
-        const originalRequest = error.config;
-
-        // Si el error es 401 y no hemos intentado refrescar el token
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-
-            try {
-                const refreshToken = localStorage.getItem('refreshToken');
-                if (refreshToken) {
-                    // Intentar refrescar el token
-                    const response = await axios.post(`${API_BASE_URL}/login/refresh`, {
-                        refreshToken
-                    }, {
-                        headers: {
-                            'x-api-key': API_KEY
-                        }
-                    });
-
-                    const { accessToken } = response.data;
-                    console.log("accessToken", accessToken)
-                    localStorage.setItem('accessToken', accessToken);
-
-                    // Reintentar la petición original
-                    originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-                    return apiClient(originalRequest);
-                }
-            } catch (refreshError) {
-                // Si falla el refresh, limpiar tokens y redirigir al login
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
-                localStorage.removeItem('user');
+    (error) => {
+        // Manejo global de errores (401 → logout + redirect a /login)
+        if (error.response?.status === 401) {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            localStorage.removeItem('org');
+            // Redirigir solo si no estamos ya en login
+            if (!window.location.pathname.includes('/login')) {
                 window.location.href = '/login';
-                return Promise.reject(refreshError);
             }
         }
-
         return Promise.reject(error);
     }
 );
@@ -75,11 +50,13 @@ export default apiClient;
 
 // ==================== AUTH API ====================
 export const authAPI = {
-    login: (credentials) => apiClient.post('/auth/login', credentials),
-    register: (userData) => apiClient.post('/auth/register', userData),
-    logout: (sessionId) => apiClient.post('/auth/logout', { sessionId }), // Note: Not explicitly in serverless.yml
-    refreshToken: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken }), // Note: Not explicitly in serverless.yml
-    googleLogin: (googleData) => apiClient.post('/auth/google', googleData),
+    loginLocal: (credentials) => apiClient.post('/auth/login/local', credentials),
+    loginGoogle: (data) => apiClient.post('/auth/login/google', data),
+    loginFacebook: (data) => apiClient.post('/auth/login/facebook', data),
+    bootstrap: (data) => apiClient.post('/auth/bootstrap', data),
+    // Helper to add x-api-key header specifically for bootstrap if not handled in interceptor globally
+    // But better to handle in interceptor or here.
+    // Let's rely on the interceptor modification I will do next.
 };
 
 // ==================== CLUBS API ====================

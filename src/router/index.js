@@ -1,62 +1,73 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
-// Lazy loading de componentes
 const Login = () => import('../views/Login.vue');
-const Register = () => import('../views/Register.vue');
-const Dashboard = () => import('../views/Dashboard.vue');
-const Players = () => import('../views/Players.vue');
-const Clubs = () => import('../views/Clubs.vue');
-const Profile = () => import('../views/Profile.vue');
-const Finance = () => import('../views/Finance.vue');
+const Bootstrap = () => import('../views/Bootstrap.vue');
+const Home = () => import('../views/Home.vue');
+const ClubsList = () => import('../views/ClubsList.vue');
+const ClubDetail = () => import('../views/ClubDetail.vue');
+const RosterView = () => import('../views/RosterView.vue');
+const PlayersList = () => import('../views/PlayersList.vue');
+const PlayerDetail = () => import('../views/PlayerDetail.vue');
 
 const routes = [
     {
         path: '/',
-        redirect: '/dashboard',
+        redirect: '/home',
     },
     {
         path: '/login',
         name: 'Login',
         component: Login,
-        meta: { requiresAuth: false, hideForAuth: true },
+        meta: { requiresAuth: false, guestOnly: true },
     },
     {
-        path: '/register',
-        name: 'Register',
-        component: Register,
-        meta: { requiresAuth: false, hideForAuth: true },
+        path: '/bootstrap',
+        name: 'Bootstrap',
+        component: Bootstrap,
+        meta: { requiresAuth: true, requiresNoOrg: true },
     },
     {
-        path: '/dashboard',
-        name: 'Dashboard',
-        component: Dashboard,
-        meta: { requiresAuth: true },
-    },
-    {
-        path: '/players',
-        name: 'Players',
-        component: Players,
-        meta: { requiresAuth: true },
+        path: '/home',
+        name: 'Home',
+        component: Home,
+        meta: { requiresAuth: true, requiresOrg: true },
     },
     {
         path: '/clubs',
-        name: 'Clubs',
-        component: Clubs,
-        meta: { requiresAuth: true },
+        name: 'ClubsList',
+        component: ClubsList,
+        meta: { requiresAuth: true, requiresOrg: true },
     },
     {
-        path: '/finance',
-        name: 'Finance',
-        component: Finance,
-        meta: { requiresAuth: true },
+        path: '/clubs/:clubId',
+        name: 'ClubDetail',
+        component: ClubDetail,
+        meta: { requiresAuth: true, requiresOrg: true },
     },
     {
-        path: '/profile',
-        name: 'Profile',
-        component: Profile,
-        meta: { requiresAuth: true },
+        path: '/clubs/:clubId/roster',
+        name: 'ClubRoster',
+        component: RosterView,
+        meta: { requiresAuth: true, requiresOrg: true },
     },
+    {
+        path: '/players',
+        name: 'PlayersList',
+        component: PlayersList,
+        meta: { requiresAuth: true, requiresOrg: true },
+    },
+    {
+        path: '/players/:playerId',
+        name: 'PlayerDetail',
+        component: PlayerDetail,
+        meta: { requiresAuth: true, requiresOrg: true },
+    },
+    // Catch-all
+    {
+        path: '/:pathMatch(.*)*',
+        redirect: '/home'
+    }
 ];
 
 const router = createRouter({
@@ -67,18 +78,32 @@ const router = createRouter({
 // Navigation guards
 router.beforeEach((to, from, next) => {
     const authStore = useAuthStore();
-    const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-    const hideForAuth = to.matched.some(record => record.meta.hideForAuth);
+    const isAuthenticated = authStore.state.isAuthenticated;
+    const hasOrg = !!authStore.state.org;
 
-    if (requiresAuth && !authStore.isAuthenticated.value) {
-        // Ruta requiere autenticación pero el usuario no está autenticado
-        next('/login');
-    } else if (hideForAuth && authStore.isAuthenticated.value) {
-        // Ruta es solo para no autenticados pero el usuario está autenticado
-        next('/dashboard');
-    } else {
-        next();
+    // 1. If route requires auth and user is not authenticated -> Login
+    if (to.meta.requiresAuth && !isAuthenticated) {
+        return next('/login');
     }
+
+    // 2. If route is for guests only (Login) and user is authenticated
+    if (to.meta.guestOnly && isAuthenticated) {
+        // If they have an org, go home. If not, go bootstrap.
+        return next(hasOrg ? '/home' : '/bootstrap');
+    }
+
+    // 3. If route requires an Org (Home) but user doesn't have one -> Bootstrap
+    if (to.meta.requiresOrg && !hasOrg) {
+        return next('/bootstrap');
+    }
+
+    // 4. If route requires NO Org (Bootstrap) but user has one -> Home
+    // (Prevent going back to bootstrap if already set up)
+    if (to.meta.requiresNoOrg && hasOrg) {
+        return next('/home');
+    }
+
+    next();
 });
 
 export default router;

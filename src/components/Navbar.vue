@@ -2,28 +2,24 @@
   <nav class="navbar">
     <div class="container navbar-content">
       <div class="navbar-brand">
-        <router-link to="/dashboard" class="logo">
+        <router-link to="/home" class="logo">
           <span class="logo-icon">⚽</span>
-          <span class="logo-text">Fair Play Chile</span>
+          <span class="logo-text">Liga App</span>
         </router-link>
       </div>
 
       <div class="navbar-menu" :class="{ 'is-active': mobileMenuOpen }">
-        <router-link to="/dashboard" class="nav-link" @click="closeMobileMenu">
+        <router-link to="/home" class="nav-link" @click="closeMobileMenu">
           <span class="nav-icon">🏠</span>
-          Dashboard
+          Home
         </router-link>
         <router-link to="/clubs" class="nav-link" @click="closeMobileMenu">
-          <span class="nav-icon">🏆</span>
+          <span class="nav-icon">🛡️</span>
           Clubes
         </router-link>
         <router-link to="/players" class="nav-link" @click="closeMobileMenu">
           <span class="nav-icon">👥</span>
           Jugadores
-        </router-link>
-        <router-link to="/finance" class="nav-link" @click="closeMobileMenu">
-          <span class="nav-icon">💰</span>
-          Finanzas
         </router-link>
       </div>
 
@@ -36,10 +32,6 @@
           <span class="dropdown-arrow">▼</span>
           
           <div class="user-dropdown" v-if="userMenuOpen">
-            <router-link to="/profile" class="dropdown-item" @click="closeUserMenu">
-              <span>👤</span> Mi Perfil
-            </router-link>
-            <div class="dropdown-divider"></div>
             <button @click="handleLogout" class="dropdown-item logout">
               <span>🚪</span> Cerrar Sesión
             </button>
