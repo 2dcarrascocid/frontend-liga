@@ -1,192 +1,201 @@
 <template>
   <div class="container mt-md">
+    <!-- Header -->
     <div class="flex justify-between items-center mb-lg">
-      <h2>{{ playerTitle }}</h2>
-      <button class="btn btn-secondary" @click="goBack">
-        Volver
+      <button class="btn btn-secondary btn-sm" @click="goBack">
+        &larr; Volver
       </button>
-    </div>
-
-    <div v-if="playersStore.error" class="alert alert-error">
-      {{ playersStore.error }}
-    </div>
-
-    <div v-if="playersStore.current" class="card mb-lg">
-      <div class="flex justify-between items-center mb-md">
-        <div>
-          <h3>{{ playersStore.current.full_name }}</h3>
-          <p class="text-muted text-sm">
-            {{ playersStore.current.position }} · {{ playersStore.current.category }}
-          </p>
-        </div>
-        <div class="player-number">
-          {{ playersStore.current.number || '-' }}
-        </div>
-      </div>
-      <p class="text-muted text-sm mb-md">
-        Club actual: {{ playersStore.current.club_name || 'Sin club' }}
-      </p>
-      <span class="badge" :class="statusClass(playersStore.current.status)">
-        {{ playersStore.current.status || 'ACTIVE' }}
-      </span>
-    </div>
-
-    <div class="card mb-lg">
-      <h3 class="mb-md">Préstamo de jugador</h3>
-
-      <div v-if="currentLoan">
-        <p class="text-muted text-sm mb-md">
-          Estado préstamo: {{ currentLoan.status }}
-        </p>
-        <div class="flex gap-sm mb-md">
-          <button
-            v-if="canApprove"
-            class="btn btn-primary"
-            @click="approveCurrentLoan"
-          >
-            Aprobar
-          </button>
-          <button
-            v-if="canApprove"
-            class="btn btn-secondary"
-            @click="rejectCurrentLoan"
-          >
-            Rechazar
-          </button>
-          <button
-            v-if="canReturn"
-            class="btn btn-primary"
-            @click="returnCurrentLoan"
-          >
-            Marcar devolución
-          </button>
-        </div>
-      </div>
-
-      <form class="flex flex-col gap-md" @submit.prevent="requestLoanAction">
-        <div class="input-group">
-          <label class="label">Club destino (ID)</label>
-          <input v-model="loanForm.to_club_id" class="input" required />
-        </div>
-        <div class="flex gap-md">
-          <div class="input-group" style="flex:1;">
-            <label class="label">Fecha inicio</label>
-            <input v-model="loanForm.start_date" type="date" class="input" />
-          </div>
-          <div class="input-group" style="flex:1;">
-            <label class="label">Fecha fin</label>
-            <input v-model="loanForm.end_date" type="date" class="input" />
-          </div>
-        </div>
-        <button class="btn btn-primary" type="submit" :disabled="playersStore.loading">
-          {{ playersStore.loading ? 'Enviando...' : 'Solicitar préstamo' }}
+      <div class="flex gap-sm">
+        <button v-if="player" class="btn btn-secondary" @click="$router.push(`/players/${player.id}/edit`)">
+           Editar
         </button>
-      </form>
+        <button v-if="player" class="btn btn-primary" @click="$router.push(`/players/${player.id}/change-club`)">
+           Cambiar Club
+        </button>
+      </div>
+    </div>
+
+    <div v-if="loading && !player" class="text-center py-lg">
+      Cargando...
+    </div>
+
+    <div v-else-if="error" class="alert alert-error">
+      {{ error }}
+    </div>
+
+    <div v-else-if="player" class="grid grid-cols-1 md:grid-cols-3 gap-lg">
+      <!-- Left Column: Photo & Status -->
+      <div class="col-span-1">
+        <div class="card flex flex-col items-center text-center p-lg">
+           <div class="player-photo-large mb-md relative group">
+               <img :src="player.photo_url || '/placeholder-player.png'" alt="Foto" class="photo-img" />
+               <div class="photo-overlay" @click="triggerPhotoUpload">
+                   <span>Cambiar Foto</span>
+               </div>
+               <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handlePhotoUpload" />
+           </div>
+           <h2 class="mb-xs">{{ player.first_name }} {{ player.last_name }}</h2>
+           <p class="text-muted mb-md">Folio: {{ player.id }}</p>
+           
+           <div class="w-full border-t border-border py-md">
+               <div class="mb-sm">
+                   <span class="text-xs text-muted uppercase tracking-wider">Club Actual</span>
+                   <p class="font-bold text-lg">{{ player.club?.name || 'Sin Club' }}</p>
+               </div>
+               <div class="flex justify-center gap-md">
+                   <div v-if="player.club_id">
+                       <span class="text-xs text-muted">ID Club</span>
+                       <p>{{ player.club_id }}</p>
+                   </div>
+                    <div>
+                       <span class="text-xs text-muted">Estado</span>
+                       <div class="mt-xs">
+                           <span class="badge" :class="player.status === 'ACTIVE' ? 'badge-success' : 'badge-secondary'">
+                               {{ player.status }}
+                           </span>
+                       </div>
+                   </div>
+               </div>
+           </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Details -->
+      <div class="col-span-1 md:col-span-2 space-y-md">
+          <!-- Sports Info -->
+          <div class="card">
+              <h3 class="mb-md border-b border-border pb-sm">Información Deportiva</h3>
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-md">
+                  <div>
+                      <span class="label block mb-xs">Categoría</span>
+                      <p>{{ player.category_id || '-' }}</p>
+                  </div>
+                   <div>
+                      <span class="label block mb-xs">Posición</span>
+                      <p>{{ player.position || '-' }}</p>
+                  </div>
+                   <div>
+                      <span class="label block mb-xs">Camiseta</span>
+                      <p class="text-xl font-bold">{{ player.jersey_number || '-' }}</p>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Personal Info -->
+           <div class="card">
+              <h3 class="mb-md border-b border-border pb-sm">Información Personal</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+                  <div>
+                      <span class="label block mb-xs">Fecha de Nacimiento</span>
+                      <p>{{ formatDate(player.birth_date) }}</p>
+                  </div>
+                   <div>
+                      <span class="label block mb-xs">Identificación</span>
+                      <p>{{ player.national_id || '-' }}</p>
+                  </div>
+                   <div>
+                      <span class="label block mb-xs">Email</span>
+                      <p>{{ player.email || '-' }}</p>
+                  </div>
+                   <div>
+                      <span class="label block mb-xs">Teléfono</span>
+                      <p>{{ player.phone || '-' }}</p>
+                  </div>
+                   <div class="col-span-1 md:col-span-2">
+                      <span class="label block mb-xs">Dirección</span>
+                      <p>{{ player.address || '-' }}</p>
+                  </div>
+              </div>
+          </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePlayersStore } from '../stores/players';
 
 const route = useRoute();
 const router = useRouter();
 const playersStore = usePlayersStore();
+const fileInput = ref(null);
 
-const loanForm = reactive({
-  to_club_id: '',
-  start_date: '',
-  end_date: '',
-});
-
-const playerTitle = computed(() => playersStore.current?.full_name || 'Detalle jugador');
-
-const currentLoan = computed(() => playersStore.current?.current_loan || null);
-
-const canApprove = computed(() => currentLoan.value?.status === 'REQUESTED');
-const canReturn = computed(() => currentLoan.value?.status === 'APPROVED');
-
-const loadPlayer = async () => {
-  await playersStore.fetchPlayerById(route.params.playerId);
-};
-
-const requestLoanAction = async () => {
-  await playersStore.requestPlayerLoan(route.params.playerId, { ...loanForm });
-  await loadPlayer();
-};
-
-const approveCurrentLoan = async () => {
-  if (!currentLoan.value) return;
-  const ok = window.confirm('¿Aprobar solicitud de préstamo?');
-  if (!ok) return;
-  await playersStore.approvePlayerLoan(currentLoan.value.id);
-  await loadPlayer();
-};
-
-const rejectCurrentLoan = async () => {
-  if (!currentLoan.value) return;
-  const ok = window.confirm('¿Rechazar solicitud de préstamo?');
-  if (!ok) return;
-  await playersStore.rejectPlayerLoan(currentLoan.value.id);
-  await loadPlayer();
-};
-
-const returnCurrentLoan = async () => {
-  if (!currentLoan.value) return;
-  const ok = window.confirm('¿Confirmar devolución de jugador?');
-  if (!ok) return;
-  await playersStore.returnPlayerLoan(currentLoan.value.id);
-  await loadPlayer();
-};
+const player = computed(() => playersStore.current);
+const loading = computed(() => playersStore.loading);
+const error = computed(() => playersStore.error);
 
 const goBack = () => {
-  router.push('/players');
+    // If we have history, go back, else go to club list if club_id available
+    if (window.history.length > 1) {
+        router.back();
+    } else if (player.value && player.value.club_id) {
+        router.push(`/clubs/${player.value.club_id}/players`);
+    } else {
+        router.push('/home');
+    }
 };
 
-const statusClass = (status) => {
-  if (status === 'LOAN') return 'status-loan';
-  if (status === 'INACTIVE') return 'status-inactive';
-  return 'status-active';
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString();
+};
+
+const triggerPhotoUpload = () => {
+    fileInput.value.click();
+};
+
+const handlePhotoUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        await playersStore.uploadPlayerPhoto(player.value.id, file);
+        // Refresh player to get new photo url if needed, or store updates it
+        await playersStore.fetchPlayerById(player.value.id);
+    } catch (e) {
+        // Error handled in store
+    }
 };
 
 onMounted(() => {
-  loadPlayer();
+    const playerId = route.params.playerId;
+    if (playerId) {
+        playersStore.fetchPlayerById(playerId);
+    }
 });
 </script>
 
 <style scoped>
-.player-number {
-  width: 40px;
-  height: 40px;
-  border-radius: 9999px;
-  background: var(--bg-tertiary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
+.player-photo-large {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--bg-secondary);
+    background: var(--bg-secondary);
+    cursor: pointer;
 }
-
-.badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
+.photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
-
-.status-active {
-  background: rgba(16, 185, 129, 0.15);
-  color: #6ee7b7;
+.photo-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: white;
+    font-weight: bold;
+    font-size: 0.8rem;
 }
-
-.status-inactive {
-  background: rgba(148, 163, 184, 0.2);
-  color: #cbd5e1;
-}
-
-.status-loan {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
+.player-photo-large:hover .photo-overlay {
+    opacity: 1;
 }
 </style>
-

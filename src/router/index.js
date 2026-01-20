@@ -9,6 +9,10 @@ const ClubDetail = () => import('../views/ClubDetail.vue');
 const RosterView = () => import('../views/RosterView.vue');
 const PlayersList = () => import('../views/PlayersList.vue');
 const PlayerDetail = () => import('../views/PlayerDetail.vue');
+const ClubPlayers = () => import('../views/ClubPlayers.vue');
+const PlayerCreate = () => import('../views/PlayerCreate.vue');
+const PlayerEdit = () => import('../views/PlayerEdit.vue');
+const PlayerChangeClub = () => import('../views/PlayerChangeClub.vue');
 
 const routes = [
     {
@@ -52,6 +56,18 @@ const routes = [
         meta: { requiresAuth: true, requiresOrg: true },
     },
     {
+        path: '/clubs/:clubId/players',
+        name: 'ClubPlayers',
+        component: ClubPlayers,
+        meta: { requiresAuth: true, requiresOrg: true },
+    },
+    {
+        path: '/clubs/:clubId/players/new',
+        name: 'PlayerCreate',
+        component: PlayerCreate,
+        meta: { requiresAuth: true, requiresOrg: true },
+    },
+    {
         path: '/players',
         name: 'PlayersList',
         component: PlayersList,
@@ -61,6 +77,18 @@ const routes = [
         path: '/players/:playerId',
         name: 'PlayerDetail',
         component: PlayerDetail,
+        meta: { requiresAuth: true, requiresOrg: true },
+    },
+    {
+        path: '/players/:playerId/edit',
+        name: 'PlayerEdit',
+        component: PlayerEdit,
+        meta: { requiresAuth: true, requiresOrg: true },
+    },
+    {
+        path: '/players/:playerId/change-club',
+        name: 'PlayerChangeClub',
+        component: PlayerChangeClub,
         meta: { requiresAuth: true, requiresOrg: true },
     },
     // Catch-all
@@ -98,7 +126,6 @@ router.beforeEach((to, from, next) => {
     }
 
     // 4. If route requires NO Org (Bootstrap) but user has one -> Home
-    // (Prevent going back to bootstrap if already set up)
     if (to.meta.requiresNoOrg && hasOrg) {
         return next('/home');
     }

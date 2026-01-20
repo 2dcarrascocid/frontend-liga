@@ -6,7 +6,7 @@
         <button class="btn btn-secondary" @click="goBack">
           Volver
         </button>
-        <button class="btn btn-primary" :disabled="!current" @click="startEdit">
+        <button class="btn btn-secondary" :disabled="!current" @click="startEdit">
           Editar club
         </button>
       </div>
@@ -16,6 +16,7 @@
       {{ error }}
     </div>
 
+    <!-- Club Details -->
     <div v-if="current" class="card club-card-detail mb-lg">
       <div class="club-card-header">
         <div class="club-logo-large">
@@ -27,6 +28,11 @@
           <p class="text-muted text-sm">
             {{ current.short_name || 'Sin nombre corto' }}
           </p>
+        </div>
+        <div class="ml-auto flex items-center gap-md">
+             <span class="badge" :class="activeCount >= 70 ? 'badge-danger' : 'badge-success'">
+                 Activos: {{ activeCount }} / 70
+             </span>
         </div>
       </div>
       <div class="club-card-body">
@@ -45,6 +51,7 @@
       </div>
     </div>
 
+    <!-- Edit Club Form -->
     <div v-if="current && editMode" class="card mb-lg">
       <h3 class="mb-md">Editar club</h3>
       <form @submit.prevent="saveEdit">
@@ -101,43 +108,188 @@
       </form>
     </div>
 
-    <div class="card">
-      <h3 class="mb-md">Accesos de usuarios</h3>
+    <!-- PLAYERS SECTION -->
+    <div class="card mb-lg">
+       <div class="flex justify-between items-center mb-md flex-wrap gap-md">
+           <h3>Jugadores del Club</h3>
+           <button 
+             class="btn btn-primary" 
+             @click="$router.push(`/clubs/${route.params.clubId}/players/new`)"
+           >
+             Nuevo Jugador
+           </button>
+       </div>
 
-      <form class="flex flex-col gap-md mb-md" @submit.prevent="handleAddUser">
-        <div class="input-group">
-          <label class="label">Email usuario</label>
-          <input v-model="userEmail" type="email" required class="input" />
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-muted text-sm">Agregar usuario con acceso al club</span>
-          <button type="submit" class="btn btn-primary" :disabled="loading">
-            {{ loading ? 'Agregando...' : 'Agregar' }}
-          </button>
-        </div>
-      </form>
+       <!-- Filters -->
+       <div class="flex gap-md mb-md flex-wrap items-center">
+            <div class="input-group flex-1" style="min-width: 200px;">
+                <input 
+                    v-model="playerFilters.q" 
+                    @input="handlePlayerSearch" 
+                    placeholder="Buscar por nombre o ID..." 
+                    class="input"
+                />
+            </div>
+            <div class="input-group" style="min-width: 150px;">
+                 <select v-model="playerFilters.status" @change="handlePlayerFilter" class="input">
+                     <option :value="null">Todos los estados</option>
+                     <option value="ACTIVE">Activos</option>
+                     <option value="INACTIVE">Inactivos</option>
+                 </select>
+            </div>
+       </div>
 
-      <div v-if="users.length === 0" class="text-muted text-sm">
-        No hay usuarios asignados a este club.
+        <!-- Loading -->
+        <div v-if="playersLoading && filteredPlayers.length === 0" class="text-center py-lg">
+            Cargando jugadores...
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="filteredPlayers.length === 0" class="text-center py-lg">
+            No hay jugadores registrados en este club.
+        </div>
+
+        <!-- List -->
+        <div v-else class="overflow-hidden">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Foto</th>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>Posición</th>
+                  <th>Camiseta</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="player in filteredPlayers" :key="player.id">
+                  <td>{{ player.id }}</td>
+                  <td>
+                    <div class="avatar-small">
+                        <img :src="player.photo_url || '/placeholder-player.png'" alt="Foto" class="avatar-img" />
+                    </div>
+                  </td>
+                  <td>{{ player.first_name }} {{ player.last_name }}</td>
+                  <td>{{ player.category_id }}</td>
+                  <td>{{ player.position }}</td>
+                  <td>{{ player.jersey_number }}</td>
+                  <td>
+                      <span class="badge" :class="player.status === 'ACTIVE' ? 'badge-success' : 'badge-secondary'">
+                          {{ player.status }}
+                      </span>
+                  </td>
+                  <td>
+                    <div class="flex gap-sm">
+                      <button 
+                        class="btn btn-sm btn-secondary" 
+                        @click="$router.push(`/players/${player.id}`)"
+                        title="Ver detalle"
+                      >
+                        Ver
+                      </button>
+                      <button 
+                        class="btn btn-sm btn-secondary" 
+                        @click="$router.push(`/players/${player.id}/edit`)"
+                         title="Editar"
+                      >
+                        Edit
+                      </button>
+                       <button 
+                        class="btn btn-sm" 
+                        :class="player.status === 'ACTIVE' ? 'btn-danger' : 'btn-success'"
+                        @click="togglePlayerStatus(player)"
+                        title="Cambiar estado"
+                      >
+                        {{ player.status === 'ACTIVE' ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+           <!-- Pagination -->
+           <div class="pagination-center" v-if="filteredPlayers.length > 0">
+               <div class="pagination">
+                   <div class="pagination-controls">
+                        <button 
+                            class="pagination-btn" 
+                            :disabled="playerPage === 1"
+                            @click="changePlayerPage(playerPage - 1)"
+                        >
+                            &larr; Anterior
+                        </button>
+                        <span class="pagination-info">Página {{ playerPage }}</span>
+                        <button 
+                            class="pagination-btn" 
+                            :disabled="!playersMeta.next_token"
+                            @click="changePlayerPage(playerPage + 1)"
+                        >
+                            Siguiente &rarr;
+                        </button>
+                   </div>
+                   
+                   <div class="flex items-center gap-sm">
+                       <span class="text-sm text-muted">Mostrar:</span>
+                       <select v-model="playerLimit" @change="handleLimitChange" class="pagination-select">
+                           <option :value="10">10</option>
+                           <option :value="20">20</option>
+                           <option :value="50">50</option>
+                       </select>
+                   </div>
+               </div>
+           </div>
+        </div>
+    </div>
+
+    <!-- User Access Section (Collapsed or Secondary) -->
+    <div class="card bg-secondary">
+      <div class="flex justify-between items-center cursor-pointer" @click="showUserAccess = !showUserAccess">
+          <h3 class="mb-0">Configuración de Accesos</h3>
+          <span class="text-lg">{{ showUserAccess ? '−' : '+' }}</span>
       </div>
 
-      <div v-else class="users-table">
-        <div
-          v-for="user in users"
-          :key="user.id"
-          class="user-row"
-        >
-          <div class="user-info">
-            <div class="user-name">{{ user.name || user.email }}</div>
-            <div class="text-muted text-sm">{{ user.email }}</div>
+      <div v-if="showUserAccess" class="mt-md border-t border-border pt-md">
+          <form class="flex flex-col gap-md mb-md" @submit.prevent="handleAddUser">
+            <div class="input-group">
+              <label class="label">Email usuario</label>
+              <input v-model="userEmail" type="email" required class="input" />
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-muted text-sm">Agregar usuario con acceso al club</span>
+              <button type="submit" class="btn btn-primary" :disabled="loading">
+                {{ loading ? 'Agregando...' : 'Agregar' }}
+              </button>
+            </div>
+          </form>
+
+          <div v-if="users.length === 0" class="text-muted text-sm">
+            No hay usuarios asignados a este club.
           </div>
-          <button
-            class="btn btn-secondary"
-            @click="confirmRemoveUser(user.id)"
-          >
-            Quitar
-          </button>
-        </div>
+
+          <div v-else class="users-table">
+            <div
+              v-for="user in users"
+              :key="user.id"
+              class="user-row"
+            >
+              <div class="user-info">
+                <div class="user-name">{{ user.name || user.email }}</div>
+                <div class="text-muted text-sm">{{ user.email }}</div>
+              </div>
+              <button
+                class="btn btn-secondary"
+                @click="confirmRemoveUser(user.id)"
+              >
+                Quitar
+              </button>
+            </div>
+          </div>
       </div>
     </div>
   </div>
@@ -147,17 +299,43 @@
 import { computed, onMounted, ref, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useClubsStore } from '../stores/clubs';
+import { usePlayersStore } from '../stores/players';
 import { useAuthStore } from '../stores/auth';
 import { uploadImage } from '../services/cloudinary.service';
 
 const route = useRoute();
 const router = useRouter();
 const { current, users, loading, error, fetchClubById, addUserToClub, removeUserFromClub, createOrUpdateClub } = useClubsStore();
+const playersStore = usePlayersStore();
 const authStore = useAuthStore();
 
 const userEmail = ref('');
 const editMode = ref(false);
 const editUploading = ref(false);
+const showUserAccess = ref(false);
+
+// Player List State
+const playerFilters = ref({
+    q: '',
+    status: null
+});
+const playerPage = ref(1);
+const playerLimit = ref(20);
+
+const players = computed(() => playersStore.items);
+const filteredPlayers = computed(() => {
+    if (!Array.isArray(players.value)) return [];
+    return players.value.filter(p => p && p.id);
+});
+const playersLoading = computed(() => playersStore.loading);
+const playersMeta = computed(() => playersStore.meta);
+
+const activeCount = computed(() => {
+    if (current.value && current.value.active_players_count !== undefined) {
+        return current.value.active_players_count;
+    }
+    return 0; 
+});
 
 const editForm = reactive({
   id: null,
@@ -167,8 +345,6 @@ const editForm = reactive({
   description: '',
   logo_url: '',
 });
-
-const clubTitle = computed(() => current.value?.name || 'Detalle Club');
 
 const syncEditForm = () => {
   if (!current.value) return;
@@ -180,9 +356,51 @@ const syncEditForm = () => {
   editForm.logo_url = current.value.logo_url || '';
 };
 
-const loadClub = async () => {
+const loadData = async () => {
   await fetchClubById(route.params.clubId);
   syncEditForm();
+  await fetchPlayers();
+};
+
+const fetchPlayers = async () => {
+    const params = { 
+        ...playerFilters.value, 
+        limit: playerLimit.value 
+    };
+    await playersStore.fetchPlayersByClub(route.params.clubId, params);
+};
+
+const handlePlayerSearch = () => {
+    playerPage.value = 1;
+    fetchPlayers();
+};
+
+const handlePlayerFilter = () => {
+    playerPage.value = 1;
+    fetchPlayers();
+};
+
+const handleLimitChange = () => {
+    playerPage.value = 1;
+    fetchPlayers();
+};
+
+const changePlayerPage = (newPage) => {
+    playerPage.value = newPage;
+    fetchPlayers();
+};
+
+const togglePlayerStatus = async (player) => {
+    const newStatus = player.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    if (!confirm(`¿Estás seguro de que deseas ${newStatus === 'ACTIVE' ? 'activar' : 'desactivar'} a este jugador?`)) return;
+    
+    try {
+        await playersStore.updatePlayerStatus(route.params.clubId, player.id, { status: newStatus });
+        // Refresh club data to update counts if backend updates it
+        fetchClubById(route.params.clubId); 
+    } catch (e) {
+        // Error handled in store
+    }
 };
 
 const startEdit = () => {
@@ -203,7 +421,7 @@ const saveEdit = async () => {
     org_id: authStore.state.org?.id,
   };
   await createOrUpdateClub(payload);
-  await loadClub();
+  await loadData(); // Reload all
   editMode.value = false;
 };
 
@@ -230,14 +448,14 @@ const removeEditLogo = () => {
 const handleAddUser = async () => {
   await addUserToClub(route.params.clubId, { email: userEmail.value });
   userEmail.value = '';
-  await loadClub();
+  await fetchClubById(route.params.clubId); // Refresh users
 };
 
 const confirmRemoveUser = async (userId) => {
   const ok = window.confirm('¿Quitar acceso a este usuario?');
   if (!ok) return;
   await removeUserFromClub(route.params.clubId, userId);
-  await loadClub();
+  await fetchClubById(route.params.clubId); // Refresh users
 };
 
 const goBack = () => {
@@ -245,11 +463,29 @@ const goBack = () => {
 };
 
 onMounted(() => {
-  loadClub();
+  loadData();
 });
 </script>
 
 <style scoped>
+.avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.pagination-center {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+}
 .users-table {
   display: flex;
   flex-direction: column;
