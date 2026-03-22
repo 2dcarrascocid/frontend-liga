@@ -59,6 +59,25 @@
             <label class="label">Descripción</label>
             <textarea v-model="form.description" class="input" rows="3" />
           </div>
+          <div class="section-divider">Configuración de Nómina</div>
+          <div class="folio-config-row">
+            <div class="input-group">
+              <label class="label">Folio inicio *</label>
+              <input v-model.number="form.folio_start" type="number" min="1" class="input" required />
+            </div>
+            <div class="input-group">
+              <label class="label">Folio término *</label>
+              <input v-model.number="form.folio_end" type="number" min="1" class="input" required />
+            </div>
+            <div class="input-group">
+              <label class="label">Máx. jugadores</label>
+              <input v-model.number="form.max_players" type="number" min="1" max="200" class="input" />
+            </div>
+          </div>
+          <p v-if="form.folio_start && form.folio_end" class="field-hint">
+            Rango: {{ form.folio_start }} – {{ form.folio_end }}
+            ({{ form.folio_end - form.folio_start + 1 }} folios)
+          </p>
         </div>
         <div class="flex justify-between items-center mt-md">
           <span class="text-muted text-sm">
@@ -235,12 +254,15 @@ const hasNextPage = computed(() => !!meta.value?.next_token);
 const hasPrevPage = computed(() => currentPage.value > 1);
 
 const form = reactive({
-  id: null,
-  name: '',
-  short_name: '',
-  colors: '',
+  id:          null,
+  name:        '',
+  short_name:  '',
+  colors:      '',
   description: '',
-  logo_url: '',
+  logo_url:    '',
+  folio_start: null,
+  folio_end:   null,
+  max_players: 70,
 });
 
 const loadClubs = async () => {
@@ -268,12 +290,15 @@ const cancelForm = () => {
 };
 
 const resetForm = () => {
-  form.id = null;
-  form.name = '';
-  form.short_name = '';
-  form.colors = '';
+  form.id          = null;
+  form.name        = '';
+  form.short_name  = '';
+  form.colors      = '';
   form.description = '';
-  form.logo_url = '';
+  form.logo_url    = '';
+  form.folio_start = null;
+  form.folio_end   = null;
+  form.max_players = 70;
   showPostSaveDialog.value = false;
 };
 
@@ -362,6 +387,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.field-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.section-divider {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 4px;
+  margin-top: 4px;
+}
+
+.folio-config-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
 /* Modal Overlay */
 .modal-overlay {
   position: fixed;

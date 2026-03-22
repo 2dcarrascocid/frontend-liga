@@ -239,6 +239,26 @@
               <label class="label">Descripción</label>
               <textarea v-model="editForm.description" class="input" rows="3" />
             </div>
+
+            <div class="section-divider">Configuración de Nómina</div>
+            <div class="folio-config-row">
+              <div class="input-group">
+                <label class="label">Folio inicio</label>
+                <input v-model.number="editForm.folio_start" type="number" min="1" class="input" />
+              </div>
+              <div class="input-group">
+                <label class="label">Folio término</label>
+                <input v-model.number="editForm.folio_end" type="number" min="1" class="input" />
+              </div>
+              <div class="input-group">
+                <label class="label">Máx. jugadores</label>
+                <input v-model.number="editForm.max_players" type="number" min="1" max="200" class="input" />
+              </div>
+            </div>
+            <p class="folio-config-hint">
+              Rango: {{ editForm.folio_start }} – {{ editForm.folio_end }}
+              ({{ editForm.folio_end - editForm.folio_start + 1 }} folios / máx. {{ editForm.max_players }} jugadores)
+            </p>
           </div>
           <div class="flex justify-end gap-sm mt-md">
             <button type="button" class="btn btn-secondary" @click="syncEditForm">
@@ -543,6 +563,9 @@ const editForm = reactive({
   colors: '',
   description: '',
   logo_url: '',
+  folio_start:  1,
+  folio_end:    70,
+  max_players:  70,
 });
 
 const syncEditForm = () => {
@@ -553,6 +576,9 @@ const syncEditForm = () => {
   editForm.colors      = current.value.colors      || '';
   editForm.description = current.value.description || '';
   editForm.logo_url    = current.value.logo_url    || '';
+  editForm.folio_start = current.value.folio_start ?? 1;
+  editForm.folio_end   = current.value.folio_end   ?? 70;
+  editForm.max_players = current.value.max_players ?? 70;
 };
 
 const saveEdit = async () => {
@@ -893,6 +919,28 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* ── Folio config ── */
+.section-divider {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 4px;
+  margin-top: 4px;
+}
+.folio-config-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.folio-config-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: -4px;
+}
+
 /* ── Tabs ── */
 .club-tabs {
   display: flex;
