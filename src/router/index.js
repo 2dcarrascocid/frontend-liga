@@ -13,6 +13,7 @@ const ClubPlayers = () => import('../views/ClubPlayers.vue');
 const PlayerCreate = () => import('../views/PlayerCreate.vue');
 const PlayerEdit = () => import('../views/PlayerEdit.vue');
 const PlayerChangeClub = () => import('../views/PlayerChangeClub.vue');
+const PlayersImport    = () => import('../views/PlayersImport.vue');
 
 const routes = [
     {
@@ -65,6 +66,12 @@ const routes = [
         path: '/clubs/:clubId/players/new',
         name: 'PlayerCreate',
         component: PlayerCreate,
+        meta: { requiresAuth: true, requiresOrg: true },
+    },
+    {
+        path: '/clubs/:clubId/players/import',
+        name: 'PlayersImport',
+        component: PlayersImport,
         meta: { requiresAuth: true, requiresOrg: true },
     },
     {

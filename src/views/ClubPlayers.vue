@@ -11,8 +11,14 @@
              Activos: {{ activeCount }} / 70
          </span>
       </div>
-      <button 
-        class="btn btn-primary" 
+      <button
+        class="btn btn-secondary"
+        @click="$router.push(`/clubs/${clubId}/players/import`)"
+      >
+        📥 Importar Excel
+      </button>
+      <button
+        class="btn btn-primary"
         @click="$router.push(`/clubs/${clubId}/players/new`)"
       >
         Nuevo Jugador
@@ -29,12 +35,13 @@
                 class="input"
             />
         </div>
-        <div class="input-group" style="min-width: 150px;">
-             <select v-model="filters.status" @change="handleFilter" class="input">
-                 <option :value="null">Todos los estados</option>
-                 <option value="ACTIVE">Activos</option>
-                 <option value="INACTIVE">Inactivos</option>
-             </select>
+        <div class="input-group" style="min-width: 160px;">
+            <select v-model="filters.category_id" @change="handleFilter" class="input">
+                <option :value="null">Todas las categorías</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                    {{ cat.name }}
+                </option>
+            </select>
         </div>
     </div>
 
@@ -43,12 +50,12 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading && items.length === 0" class="text-center py-lg">
+    <div v-if="loading && filteredItems.length === 0" class="text-center py-lg">
         Cargando jugadores...
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="items.length === 0" class="text-center py-lg card">
+    <div v-else-if="filteredItems.length === 0" class="text-center py-lg card">
         No hay jugadores registrados en este club.
     </div>
 
@@ -62,52 +69,57 @@
               <th>Foto</th>
               <th>Nombre</th>
               <th>Categoría</th>
-              <th>Posición</th>
-              <th>Camiseta</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="player in items" :key="player.id">
-              <td>{{ player.id }}</td>
+            <tr v-for="item in filteredItems" :key="item.id">
+              <td>{{ item.club_folio }}</td>
               <td>
                 <div class="avatar-small">
-                    <img :src="player.photo_url || '/placeholder-player.png'" alt="Foto" class="avatar-img" />
+                  <img :src="item.player?.photo_url || '/placeholder-player.svg'" alt="Foto" class="avatar-img" />
                 </div>
               </td>
-              <td>{{ player.first_name }} {{ player.last_name }}</td>
-              <td>{{ player.category_id }}</td>
-              <td>{{ player.position }}</td>
-              <td>{{ player.jersey_number }}</td>
+              <td>{{ item.player?.first_name }} {{ item.player?.last_name }}</td>
               <td>
-                  <span class="badge" :class="player.status === 'ACTIVE' ? 'badge-success' : 'badge-secondary'">
-                      {{ player.status }}
-                  </span>
+                <span
+                  v-if="getPlayerCategory(item.player?.birth_date)"
+                  class="badge"
+                  :style="{ backgroundColor: getPlayerCategory(item.player?.birth_date).color, color: '#fff' }"
+                >
+                  {{ getPlayerCategory(item.player?.birth_date).name }}
+                </span>
+                <span v-else class="text-muted">—</span>
+              </td>
+              <td>
+                <span class="badge" :class="item.status === 'ACTIVE' ? 'badge-success' : 'badge-secondary'">
+                  {{ item.status }}
+                </span>
               </td>
               <td>
                 <div class="flex gap-sm">
-                  <button 
-                    class="btn btn-sm btn-secondary" 
-                    @click="$router.push(`/players/${player.id}`)"
+                  <button
+                    class="btn btn-sm btn-secondary"
+                    @click="$router.push(`/players/${item.player_id}`)"
                     title="Ver detalle"
                   >
                     Ver
                   </button>
-                  <button 
-                    class="btn btn-sm btn-secondary" 
-                    @click="$router.push(`/players/${player.id}/edit`)"
-                     title="Editar"
+                  <button
+                    class="btn btn-sm btn-secondary"
+                    @click="$router.push(`/players/${item.player_id}/edit`)"
+                    title="Editar"
                   >
                     Edit
                   </button>
-                   <button 
-                    class="btn btn-sm" 
-                    :class="player.status === 'ACTIVE' ? 'btn-danger' : 'btn-success'"
-                    @click="toggleStatus(player)"
+                  <button
+                    class="btn btn-sm"
+                    :class="item.status === 'ACTIVE' ? 'btn-danger' : 'btn-success'"
+                    @click="toggleStatus(item)"
                     title="Cambiar estado"
                   >
-                    {{ player.status === 'ACTIVE' ? 'Desactivar' : 'Activar' }}
+                    {{ item.status === 'ACTIVE' ? 'Desactivar' : 'Activar' }}
                   </button>
                 </div>
               </td>
@@ -145,6 +157,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { usePlayersStore } from '../stores/players';
 import { useClubsStore } from '../stores/clubs';
+import { listCategories } from '../services/categories.service.js';
 
 const route = useRoute();
 const playersStore = usePlayersStore();
@@ -153,16 +166,50 @@ const clubId = route.params.clubId;
 
 const filters = ref({
     q: '',
-    status: null
+    category_id: null,
 });
 
 const page = ref(1);
 
-const club = computed(() => clubsStore.current);
-const items = computed(() => playersStore.items);
-const loading = computed(() => playersStore.loading);
-const error = computed(() => playersStore.error);
-const meta = computed(() => playersStore.meta);
+const club    = clubsStore.current;
+const items   = playersStore.items;
+const loading = playersStore.loading;
+const error   = playersStore.error;
+const meta    = playersStore.meta;
+
+const filteredItems = computed(() => {
+    if (!Array.isArray(items.value)) return [];
+    return items.value.filter(item => {
+        if (!item?.id) return false;
+        if (filters.value.category_id) {
+            const cat = getPlayerCategory(item.player?.birth_date);
+            if (!cat || cat.id !== filters.value.category_id) return false;
+        }
+        return true;
+    });
+});
+
+const playersByCategory = computed(() => {
+    const list = Array.isArray(items.value) ? items.value.filter(i => i && i.id) : [];
+    if (!list.length) return [];
+
+    const groups = categories.value.map(cat => ({ category: cat, players: [] }));
+    const uncategorized = { category: null, players: [] };
+
+    for (const item of list) {
+        const cat = getPlayerCategory(item.player?.birth_date);
+        if (cat) {
+            const group = groups.find(g => g.category.id === cat.id);
+            if (group) group.players.push(item);
+        } else {
+            uncategorized.players.push(item);
+        }
+    }
+
+    const result = groups.filter(g => g.players.length > 0);
+    if (uncategorized.players.length > 0) result.push(uncategorized);
+    return result;
+});
 
 const activeCount = computed(() => {
     if (club.value && club.value.active_players_count !== undefined) {
@@ -171,24 +218,40 @@ const activeCount = computed(() => {
     return 0; 
 });
 
+const categories = ref([]);
+
+const getPlayerCategory = (birthDate) => {
+    if (!birthDate || !categories.value.length) return null;
+    const age = Math.floor((Date.now() - new Date(birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    return categories.value.find(cat => {
+        const fromOk = cat.age_from == null || age >= cat.age_from;
+        const toOk   = cat.age_to   == null || age <= cat.age_to;
+        return fromOk && toOk;
+    }) ?? null;
+};
+
 const loadData = async () => {
-    await clubsStore.fetchClubById(clubId);
+    try {
+        await clubsStore.fetchClubById(clubId);
+    } catch (e) {
+        console.error('[ClubPlayers] fetchClubById error:', e);
+    }
+    try {
+        const res = await listCategories(clubId);
+        categories.value = res.data?.data ?? [];
+    } catch (e) {
+        console.error('[ClubPlayers] listCategories error:', e);
+    }
     await fetchPlayers();
 };
 
 const fetchPlayers = async () => {
-    const params = { 
-        ...filters.value, 
-        limit: 20 
-    };
-    
-    // If using token pagination, we might handle page changes differently (by passing next_token)
-    // But for now, assuming standard page param or next_token logic handled in store/backend
-    // If backend uses next_token, we should pass it. 
-    // The current pagination logic in template uses simple page number increment which might not work if backend relies ONLY on next_token.
-    // However, I'll stick to basic implementation and refine if needed.
-    
-    await playersStore.fetchPlayersByClub(clubId, params);
+    const params = { ...filters.value, limit: 20 };
+    try {
+        await playersStore.fetchPlayersByClub(clubId, params);
+    } catch (e) {
+        console.error('[ClubPlayers] fetchPlayersByClub error:', e?.response?.data || e?.message);
+    }
 };
 
 const handleSearch = () => {
@@ -208,12 +271,12 @@ const changePage = (newPage) => {
     fetchPlayers();
 };
 
-const toggleStatus = async (player) => {
-    const newStatus = player.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+const toggleStatus = async (item) => {
+    const newStatus = item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     if (!confirm(`¿Estás seguro de que deseas ${newStatus === 'ACTIVE' ? 'activar' : 'desactivar'} a este jugador?`)) return;
-    
     try {
-        await playersStore.updatePlayerStatus(clubId, player.id, { status: newStatus });
+        await playersStore.updatePlayerStatus(clubId, item.player_id, { status: newStatus });
+        await fetchPlayers();
     } catch (e) {
         // Error handled in store
     }
@@ -242,5 +305,16 @@ onMounted(() => {
     justify-content: center;
     padding: var(--spacing-md);
     border-top: 1px solid var(--border-color);
+}
+
+.category-group-header td {
+    background: var(--bg-secondary);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-top: 2px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.category-group-header:first-child td {
+    border-top: none;
 }
 </style>

@@ -106,7 +106,8 @@ export const usePlayersStore = () => {
     state.error = null;
     try {
       const response = await getPlayerById(playerId);
-      state.current = response.data;
+      // Backend returns { player: {...} } — extract the player object
+      state.current = response.data?.player ?? response.data;
     } catch (error) {
       setError(error.response?.data?.message || 'Error al cargar jugador');
       throw error;
