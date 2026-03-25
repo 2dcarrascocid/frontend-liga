@@ -11,27 +11,47 @@
              Activos: {{ activeCount }} / 70
          </span>
       </div>
+      <div class="flex gap-md" v-if="activeTab === 'activos'">
+        <button
+          class="btn btn-secondary"
+          @click="$router.push(`/clubs/${clubId}/players/import`)"
+        >
+          📥 Importar Excel
+        </button>
+        <button
+          class="btn btn-primary"
+          @click="$router.push(`/clubs/${clubId}/players/new`)"
+        >
+          Nuevo Jugador
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs mb-md">
       <button
-        class="btn btn-secondary"
-        @click="$router.push(`/clubs/${clubId}/players/import`)"
+        class="tab-btn"
+        :class="{ active: activeTab === 'activos' }"
+        @click="switchTab('activos')"
       >
-        📥 Importar Excel
+        Jugadores Activos
       </button>
       <button
-        class="btn btn-primary"
-        @click="$router.push(`/clubs/${clubId}/players/new`)"
+        class="tab-btn"
+        :class="{ active: activeTab === 'inactivos' }"
+        @click="switchTab('inactivos')"
       >
-        Nuevo Jugador
+        Jugadores Inactivos
       </button>
     </div>
 
-    <!-- Filters -->
-    <div class="card mb-md p-md flex gap-md flex-wrap items-center">
+    <!-- Filters (solo en activos) -->
+    <div v-if="activeTab === 'activos'" class="card mb-md p-md flex gap-md flex-wrap items-center">
         <div class="input-group flex-1" style="min-width: 200px;">
-            <input 
-                v-model="filters.q" 
-                @input="handleSearch" 
-                placeholder="Buscar por nombre o ID..." 
+            <input
+                v-model="filters.q"
+                @input="handleSearch"
+                placeholder="Buscar por nombre o ID..."
                 class="input"
             />
         </div>
@@ -56,7 +76,8 @@
 
     <!-- Empty State -->
     <div v-else-if="filteredItems.length === 0" class="text-center py-lg card">
-        No hay jugadores registrados en este club.
+        <span v-if="activeTab === 'activos'">No hay jugadores activos registrados en este club.</span>
+        <span v-else>No hay jugadores inactivos en este club.</span>
     </div>
 
     <!-- List -->
@@ -69,7 +90,7 @@
               <th>Foto</th>
               <th>Nombre</th>
               <th>Categoría</th>
-              <th>Estado</th>
+              <th v-if="activeTab === 'inactivos'">Traspasado el</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -92,13 +113,12 @@
                 </span>
                 <span v-else class="text-muted">—</span>
               </td>
-              <td>
-                <span class="badge" :class="item.status === 'ACTIVE' ? 'badge-success' : 'badge-secondary'">
-                  {{ item.status }}
-                </span>
+              <td v-if="activeTab === 'inactivos'" class="text-muted text-sm">
+                {{ item.valid_to ? new Date(item.valid_to).toLocaleDateString('es-CL') : '—' }}
               </td>
               <td>
-                <div class="flex gap-sm">
+                <!-- Activos: Ver + Editar + Desactivar -->
+                <div v-if="activeTab === 'activos'" class="flex gap-sm">
                   <button
                     class="btn btn-sm btn-secondary"
                     @click="$router.push(`/players/${item.player_id}`)"
@@ -111,15 +131,17 @@
                     @click="$router.push(`/players/${item.player_id}/edit`)"
                     title="Editar"
                   >
-                    Edit
+                    Editar
                   </button>
+                </div>
+                <!-- Inactivos: solo Ver -->
+                <div v-else>
                   <button
-                    class="btn btn-sm"
-                    :class="item.status === 'ACTIVE' ? 'btn-danger' : 'btn-success'"
-                    @click="toggleStatus(item)"
-                    title="Cambiar estado"
+                    class="btn btn-sm btn-secondary"
+                    @click="$router.push(`/players/${item.player_id}`)"
+                    title="Ver detalle"
                   >
-                    {{ item.status === 'ACTIVE' ? 'Desactivar' : 'Activar' }}
+                    Ver
                   </button>
                 </div>
               </td>
@@ -127,20 +149,20 @@
           </tbody>
         </table>
       </div>
-      
+
        <!-- Pagination -->
        <div class="pagination-center" v-if="items.length > 0">
            <div class="pagination">
-                <button 
-                    class="btn btn-secondary btn-sm" 
+                <button
+                    class="btn btn-secondary btn-sm"
                     :disabled="page === 1"
                     @click="changePage(page - 1)"
                 >
                     Anterior
                 </button>
                  <span class="text-sm mx-md">Página {{ page }}</span>
-                <button 
-                    class="btn btn-secondary btn-sm" 
+                <button
+                    class="btn btn-secondary btn-sm"
                     :disabled="!meta.next_token"
                     @click="changePage(page + 1)"
                 >
@@ -164,6 +186,8 @@ const playersStore = usePlayersStore();
 const clubsStore = useClubsStore();
 const clubId = route.params.clubId;
 
+const activeTab = ref('activos');
+
 const filters = ref({
     q: '',
     category_id: null,
@@ -181,7 +205,7 @@ const filteredItems = computed(() => {
     if (!Array.isArray(items.value)) return [];
     return items.value.filter(item => {
         if (!item?.id) return false;
-        if (filters.value.category_id) {
+        if (activeTab.value === 'activos' && filters.value.category_id) {
             const cat = getPlayerCategory(item.player?.birth_date);
             if (!cat || cat.id !== filters.value.category_id) return false;
         }
@@ -189,33 +213,11 @@ const filteredItems = computed(() => {
     });
 });
 
-const playersByCategory = computed(() => {
-    const list = Array.isArray(items.value) ? items.value.filter(i => i && i.id) : [];
-    if (!list.length) return [];
-
-    const groups = categories.value.map(cat => ({ category: cat, players: [] }));
-    const uncategorized = { category: null, players: [] };
-
-    for (const item of list) {
-        const cat = getPlayerCategory(item.player?.birth_date);
-        if (cat) {
-            const group = groups.find(g => g.category.id === cat.id);
-            if (group) group.players.push(item);
-        } else {
-            uncategorized.players.push(item);
-        }
-    }
-
-    const result = groups.filter(g => g.players.length > 0);
-    if (uncategorized.players.length > 0) result.push(uncategorized);
-    return result;
-});
-
 const activeCount = computed(() => {
     if (club.value && club.value.active_players_count !== undefined) {
         return club.value.active_players_count;
     }
-    return 0; 
+    return 0;
 });
 
 const categories = ref([]);
@@ -246,12 +248,24 @@ const loadData = async () => {
 };
 
 const fetchPlayers = async () => {
-    const params = { ...filters.value, limit: 20 };
+    const status = activeTab.value === 'activos' ? 'ACTIVE' : 'INACTIVE';
+    const params = { status, limit: 20 };
+    if (activeTab.value === 'activos') {
+        if (filters.value.q) params.q = filters.value.q;
+    }
     try {
         await playersStore.fetchPlayersByClub(clubId, params);
     } catch (e) {
         console.error('[ClubPlayers] fetchPlayersByClub error:', e?.response?.data || e?.message);
     }
+};
+
+const switchTab = async (tab) => {
+    activeTab.value = tab;
+    page.value = 1;
+    filters.value.q = '';
+    filters.value.category_id = null;
+    await fetchPlayers();
 };
 
 const handleSearch = () => {
@@ -266,20 +280,7 @@ const handleFilter = () => {
 
 const changePage = (newPage) => {
     page.value = newPage;
-    // Here we would ideally pass the next_token if moving forward
-    // For now re-fetching. Real implementation depends on backend pagination style.
     fetchPlayers();
-};
-
-const toggleStatus = async (item) => {
-    const newStatus = item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    if (!confirm(`¿Estás seguro de que deseas ${newStatus === 'ACTIVE' ? 'activar' : 'desactivar'} a este jugador?`)) return;
-    try {
-        await playersStore.updatePlayerStatus(clubId, item.player_id, { status: newStatus });
-        await fetchPlayers();
-    } catch (e) {
-        // Error handled in store
-    }
 };
 
 onMounted(() => {
@@ -288,6 +289,34 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border-color);
+    gap: 0;
+}
+
+.tab-btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+}
+
 .avatar-small {
     width: 32px;
     height: 32px;
@@ -305,16 +334,5 @@ onMounted(() => {
     justify-content: center;
     padding: var(--spacing-md);
     border-top: 1px solid var(--border-color);
-}
-
-.category-group-header td {
-    background: var(--bg-secondary);
-    padding: var(--spacing-xs) var(--spacing-md);
-    border-top: 2px solid var(--border-color);
-    font-size: 0.85rem;
-}
-
-.category-group-header:first-child td {
-    border-top: none;
 }
 </style>

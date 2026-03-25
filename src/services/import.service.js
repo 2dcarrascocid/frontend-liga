@@ -128,10 +128,11 @@ function normalizeRut(rut) {
 /**
  * Parsea el archivo Excel y retorna un array de filas normalizadas.
  *
- * @param {File} file — Archivo .xlsx o .xls seleccionado por el usuario
+ * @param {File} file              — Archivo .xlsx o .xls seleccionado por el usuario
+ * @param {object} [clubConfig]    — Configuración del club { folio_start, folio_end }
  * @returns {Promise<ParsedRow[]>}
  */
-export async function parseExcelFile(file) {
+export async function parseExcelFile(file, clubConfig = null) {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
 
@@ -176,28 +177,39 @@ export async function parseExcelFile(file) {
     const celular   = colIndex.celular  !== undefined ? row[colIndex.celular]  : '';
 
     const { firstName, lastName } = parseName(nombre);
-    const nationalId = normalizeRut(rut);
-    const birthDate  = parseExcelDate(fechaNac);
-    const jerseyNumber = folio !== '' ? String(folio).trim() : null;
-    const phone = celular !== '' ? String(celular).trim() : null;
+    const nationalId  = normalizeRut(rut);
+    const birthDate   = parseExcelDate(fechaNac);
+    const folioRaw    = folio !== '' ? parseInt(String(folio).trim(), 10) : null;
+    const phone       = celular !== '' ? String(celular).trim() : null;
 
     // Validación por fila
     const errors = [];
     if (!nationalId || nationalId === '-') errors.push('RUT vacío o inválido');
     if (!firstName)                         errors.push('NOMBRE vacío');
 
+    // Validar rango del folio si se proporcionó config del club
+    if (folioRaw !== null && !isNaN(folioRaw) && clubConfig) {
+      const start = clubConfig.folio_start ?? 1;
+      const end   = clubConfig.folio_end   ?? 70;
+      if (folioRaw < start || folioRaw > end) {
+        errors.push(`Folio ${folioRaw} fuera del rango permitido (${start}–${end})`);
+      }
+    }
+    if (folioRaw !== null && isNaN(folioRaw)) {
+      errors.push('Folio inválido (debe ser un número)');
+    }
+
     rows.push({
-      _rowNum: i + 1,   // número de fila en el Excel (para referencia)
+      _rowNum: i + 1,
       firstName,
       lastName,
       nationalId,
       birthDate,
-      jerseyNumber,
+      clubFolio: (!isNaN(folioRaw) && folioRaw !== null) ? folioRaw : null,
       phone,
-      // Raw para mostrar en preview
       _raw: { folio, rut, nombre, fechaNac: fechaNac ? String(fechaNac) : '', celular },
       _errors: errors,
-      _status: errors.length > 0 ? 'invalid' : 'pending', // pending | importing | success | error
+      _status: errors.length > 0 ? 'invalid' : 'pending',
       _importError: null,
     });
   }
@@ -237,9 +249,9 @@ export async function importPlayers(rows, clubId, orgId, onProgress) {
         last_name:  row.lastName,
         rut:        row.nationalId,
       };
-      if (row.birthDate)    payload.birth_date = row.birthDate;
-      if (row.phone)        payload.phone      = row.phone;
-      if (row.jerseyNumber) payload.club_folio = Number(row.jerseyNumber) || row.jerseyNumber;
+      if (row.birthDate) payload.birth_date = row.birthDate;
+      if (row.phone)     payload.phone      = row.phone;
+      if (row.clubFolio) payload.club_folio = row.clubFolio;
 
       console.log(`[IMPORT] Fila ${row._rowNum} → POST /clubs/${clubId}/players`, payload);
 

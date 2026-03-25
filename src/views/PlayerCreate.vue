@@ -24,37 +24,47 @@
             <input v-model="form.last_name" class="input" required />
           </div>
           <div class="input-group">
+            <label class="label">RUT / DNI *</label>
+            <input v-model="form.rut" class="input" required placeholder="Ej: 12345678-9" />
+          </div>
+          <div class="input-group">
             <label class="label">Fecha de Nacimiento</label>
             <input v-model="form.birth_date" type="date" class="input" />
           </div>
           <div class="input-group">
-            <label class="label">Identificación (RUT/DNI)</label>
-            <input v-model="form.national_id" class="input" />
-          </div>
-           <div class="input-group">
             <label class="label">Dirección</label>
             <input v-model="form.address" class="input" />
           </div>
-           <div class="input-group">
+          <div class="input-group">
             <label class="label">Teléfono</label>
             <input v-model="form.phone" class="input" />
           </div>
-           <div class="input-group">
+          <div class="input-group">
             <label class="label">Email</label>
             <input v-model="form.email" type="email" class="input" />
           </div>
 
-          <!-- Sports Info -->
+          <!-- Folio -->
           <div class="input-group">
-            <label class="label">Categoría</label>
-            <select v-model="form.category_id" class="input">
-                <option value="">Seleccione...</option>
-                <option value="ADULTOS">Adultos</option>
-                <option value="JUVENIL">Juvenil</option>
-                <option value="SENIOR">Senior</option>
-                <option value="FEMENINO">Femenino</option>
-            </select>
+            <label class="label">
+              Folio
+              <span v-if="club" class="label-hint">
+                Rango {{ club.folio_start ?? 1 }} – {{ club.folio_end ?? 70 }}
+                (dejar vacío para auto-asignar)
+              </span>
+            </label>
+            <input
+              v-model.number="form.club_folio"
+              type="number"
+              class="input"
+              :min="club?.folio_start ?? 1"
+              :max="club?.folio_end ?? 70"
+              placeholder="Auto"
+            />
+            <p v-if="folioError" class="input-error">{{ folioError }}</p>
           </div>
+
+          <!-- Sports Info -->
           <div class="input-group">
             <label class="label">Posición</label>
             <select v-model="form.position" class="input">
@@ -65,12 +75,8 @@
                  <option value="FWD">Delantero</option>
             </select>
           </div>
-          <div class="input-group">
-            <label class="label">Número de Camiseta</label>
-            <input v-model="form.jersey_number" type="number" class="input" />
-          </div>
         </div>
-        
+
         <div class="input-group mt-md">
             <label class="label">Foto (Opcional)</label>
              <input type="file" @change="handleFileChange" accept="image/*" class="input" />
@@ -90,52 +96,100 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePlayersStore } from '../stores/players';
+import { getClubById } from '../services/clubs.service.js';
 
 const route = useRoute();
 const router = useRouter();
 const playersStore = usePlayersStore();
 const clubId = route.params.clubId;
 
+// Refs directas del store (ya son refs, no envolver en computed)
+const { loading, error } = playersStore;
+
+const club       = ref(null);
+const folioError = ref(null);
+
 const form = ref({
     first_name: '',
-    last_name: '',
+    last_name:  '',
+    rut:        '',
     birth_date: '',
-    national_id: '',
-    address: '',
-    phone: '',
-    email: '',
-    category_id: '',
-    position: '',
-    jersey_number: null
+    address:    '',
+    phone:      '',
+    email:      '',
+    position:   '',
+    club_folio: null,
 });
 
 const selectedFile = ref(null);
-const loading = computed(() => playersStore.loading);
-const error = computed(() => playersStore.error);
 
 const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file) {
-        selectedFile.value = file;
+    if (file) selectedFile.value = file;
+};
+
+const validateFolio = () => {
+    folioError.value = null;
+    const f = form.value.club_folio;
+    if (f === null || f === '' || f === undefined) return true;
+    const start = club.value?.folio_start ?? 1;
+    const end   = club.value?.folio_end   ?? 70;
+    if (f < start || f > end) {
+        folioError.value = `El folio debe estar entre ${start} y ${end}`;
+        return false;
     }
+    return true;
 };
 
 const savePlayer = async () => {
+    if (!validateFolio()) return;
+    // Limpiar error previo
+    error.value = null;
     try {
-        // 1. Create Player
-        const newPlayer = await playersStore.createOrUpdatePlayer(form.value, clubId);
-        
-        // 2. Upload photo if selected
-        if (selectedFile.value && newPlayer && newPlayer.id) {
-            await playersStore.uploadPlayerPhoto(newPlayer.id, selectedFile.value);
+        const payload = { ...form.value };
+        if (!payload.club_folio) delete payload.club_folio;
+        if (!payload.birth_date) delete payload.birth_date;
+        if (!payload.address)    delete payload.address;
+        if (!payload.phone)      delete payload.phone;
+        if (!payload.email)      delete payload.email;
+        if (!payload.position)   delete payload.position;
+
+        const result = await playersStore.createOrUpdatePlayer(payload, clubId);
+
+        if (selectedFile.value && result?.player?.id) {
+            await playersStore.uploadPlayerPhoto(result.player.id, selectedFile.value);
         }
-        
+
         router.push(`/clubs/${clubId}/players`);
     } catch (e) {
-        // Error handled in store
+        // El error ya queda en el store ref (error.value)
     }
 };
+
+onMounted(async () => {
+    error.value = null;
+    try {
+        const res = await getClubById(clubId);
+        club.value = res.data?.data ?? res.data ?? null;
+    } catch (e) {
+        console.error('[PlayerCreate] getClubById error:', e);
+    }
+});
 </script>
+
+<style scoped>
+.label-hint {
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 0.4rem;
+}
+.input-error {
+    font-size: 0.8rem;
+    color: var(--color-danger, #ef4444);
+    margin-top: 2px;
+}
+</style>

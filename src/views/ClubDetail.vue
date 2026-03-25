@@ -38,7 +38,7 @@
         :key="tab.key"
         class="club-tab"
         :class="{ 'club-tab-active': activeTab === tab.key }"
-        @click="activeTab = tab.key"
+        @click="switchTab(tab.key)"
       >
         {{ tab.label }}
       </button>
@@ -105,7 +105,6 @@
                   <th>Foto</th>
                   <th>Nombre</th>
                   <th>Categoría</th>
-                  <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -129,11 +128,6 @@
                     <span v-else class="text-muted">—</span>
                   </td>
                   <td>
-                    <span class="badge" :class="item.status === 'ACTIVE' ? 'badge-success' : 'badge-secondary'">
-                      {{ item.status }}
-                    </span>
-                  </td>
-                  <td>
                     <div class="flex gap-sm">
                       <button
                         class="btn btn-sm btn-secondary"
@@ -147,15 +141,7 @@
                         @click="$router.push(`/players/${item.player_id}/edit`)"
                         title="Editar"
                       >
-                        Edit
-                      </button>
-                      <button
-                        class="btn btn-sm"
-                        :class="item.status === 'ACTIVE' ? 'btn-danger' : 'btn-success'"
-                        @click="togglePlayerStatus(item)"
-                        title="Cambiar estado"
-                      >
-                        {{ item.status === 'ACTIVE' ? 'Desactivar' : 'Activar' }}
+                        Editar
                       </button>
                     </div>
                   </td>
@@ -184,15 +170,73 @@
                   Siguiente &rarr;
                 </button>
               </div>
-              <div class="flex items-center gap-sm">
-                <span class="text-sm text-muted">Mostrar:</span>
-                <select v-model="playerLimit" @change="handleLimitChange" class="pagination-select">
-                  <option :value="10">10</option>
-                  <option :value="20">20</option>
-                  <option :value="50">50</option>
-                </select>
-              </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Jugadores Inactivos -->
+    <div v-if="activeTab === 'inactive_players'">
+      <div class="card mb-lg">
+        <div class="flex justify-between items-center mb-md">
+          <h3>Jugadores Inactivos</h3>
+          <span class="text-sm text-muted">Solo lectura — se reactivan al recibir un traspaso</span>
+        </div>
+
+        <div v-if="inactiveLoading" class="text-center py-lg">
+          Cargando jugadores inactivos...
+        </div>
+        <div v-else-if="inactivePlayers.length === 0" class="text-center py-lg text-muted">
+          No hay jugadores inactivos en este club.
+        </div>
+        <div v-else class="overflow-hidden">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Folio</th>
+                  <th>Foto</th>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>Traspasado el</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in inactivePlayers" :key="item.id">
+                  <td>{{ item.club_folio || '—' }}</td>
+                  <td>
+                    <div class="avatar-small">
+                      <img :src="item.player?.photo_url || '/placeholder-player.svg'" alt="Foto" class="avatar-img" />
+                    </div>
+                  </td>
+                  <td>{{ item.player?.first_name }} {{ item.player?.last_name }}</td>
+                  <td>
+                    <span
+                      v-if="getPlayerCategory(item.player?.birth_date)"
+                      class="badge"
+                      :style="{ backgroundColor: getPlayerCategory(item.player?.birth_date).color, color: '#fff' }"
+                    >
+                      {{ getPlayerCategory(item.player?.birth_date).name }}
+                    </span>
+                    <span v-else class="text-muted">—</span>
+                  </td>
+                  <td class="text-muted text-sm">
+                    {{ item.valid_to ? formatDate(item.valid_to) : '—' }}
+                  </td>
+                  <td>
+                    <button
+                      class="btn btn-sm btn-secondary"
+                      @click="$router.push(`/players/${item.player_id}`)"
+                      title="Ver detalle"
+                    >
+                      Ver
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -544,10 +588,11 @@ const authStore    = useAuthStore();
 
 // ── Tabs ──────────────────────────────────────────────
 const tabs = [
-  { key: 'players',    label: 'Jugadores' },
-  { key: 'transfers',  label: 'Traspasos' },
-  { key: 'categories', label: 'Categorías' },
-  { key: 'edit',       label: 'Editar Club' },
+  { key: 'players',          label: 'Jugadores' },
+  { key: 'inactive_players', label: 'Jugadores Inactivos' },
+  { key: 'transfers',        label: 'Traspasos' },
+  { key: 'categories',       label: 'Categorías' },
+  { key: 'edit',             label: 'Editar Club' },
 ];
 const activeTab = ref('players');
 
@@ -629,7 +674,9 @@ const activeCount = computed(() => {
 // ── Players ───────────────────────────────────────────
 const playerFilters = ref({ q: '', category_id: null });
 const playerPage    = ref(1);
-const playerLimit   = ref(20);
+const playerLimit   = 10;
+// Tokens por página: índice 0 = página 1 (sin token), índice 1 = token para página 2, etc.
+const pageTokens    = ref([null]);
 
 const rosterItems    = playersStore.items;
 const playersLoading = playersStore.loading;
@@ -680,17 +727,60 @@ const getPlayerCategory = (birthDate) => {
   }) ?? null;
 };
 
-const fetchPlayers = async () => {
-  await playersStore.fetchPlayersByClub(route.params.clubId, {
+const fetchPlayers = async (token = null) => {
+  const params = {
     ...playerFilters.value,
-    limit: playerLimit.value,
-  });
+    status: 'ACTIVE',
+    limit: playerLimit,
+  };
+  if (token) params.next_token = token;
+  await playersStore.fetchPlayersByClub(route.params.clubId, params);
+  // Guardar token de la página siguiente si existe
+  if (playersMeta.value?.next_token) {
+    pageTokens.value[playerPage.value] = playersMeta.value.next_token;
+  }
 };
 
-const handlePlayerSearch = () => { playerPage.value = 1; fetchPlayers(); };
-const handlePlayerFilter  = () => { playerPage.value = 1; fetchPlayers(); };
-const handleLimitChange   = () => { playerPage.value = 1; fetchPlayers(); };
-const changePlayerPage    = (n) => { playerPage.value = n; fetchPlayers(); };
+const handlePlayerSearch = () => {
+  playerPage.value = 1;
+  pageTokens.value = [null];
+  fetchPlayers();
+};
+const handlePlayerFilter = () => {
+  playerPage.value = 1;
+  pageTokens.value = [null];
+  fetchPlayers();
+};
+const changePlayerPage = async (n) => {
+  const token = pageTokens.value[n - 1] ?? null;
+  playerPage.value = n;
+  await fetchPlayers(token);
+};
+
+// ── Jugadores Inactivos ────────────────────────────────
+const inactivePlayers = ref([]);
+const inactiveLoading = ref(false);
+
+const fetchInactivePlayers = async () => {
+  inactiveLoading.value = true;
+  try {
+    const { listPlayersByClub } = await import('../services/players.service.js');
+    const res = await listPlayersByClub(route.params.clubId, { status: 'INACTIVE', limit: 100 });
+    inactivePlayers.value = res.data?.data ?? [];
+  } catch (e) {
+    console.error('[ClubDetail] fetchInactivePlayers error:', e);
+  } finally {
+    inactiveLoading.value = false;
+  }
+};
+
+// ── Switch tab ────────────────────────────────────────
+const switchTab = (key) => {
+  activeTab.value = key;
+  if (key === 'inactive_players' && inactivePlayers.value.length === 0) {
+    fetchInactivePlayers();
+  }
+};
 
 const togglePlayerStatus = async (item) => {
   const newStatus = item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';

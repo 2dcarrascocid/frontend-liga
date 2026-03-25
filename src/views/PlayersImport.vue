@@ -13,7 +13,13 @@
     <!-- FASE 1: Upload -->
     <div v-if="phase === 'upload'" class="card">
       <h2 class="section-title">Selecciona el archivo Excel</h2>
-      <p class="hint">Formato esperado: <code>FOLIO · RUT · NOMBRE · FECHA NAC · CELULAR</code></p>
+      <p class="hint">
+        Formato esperado: <code>FOLIO · RUT · NOMBRE · FECHA NAC · CELULAR</code>
+        <span v-if="clubConfig">
+          — Rango de folios permitido:
+          <strong>{{ clubConfig.folio_start ?? 1 }} – {{ clubConfig.folio_end ?? 70 }}</strong>
+        </span>
+      </p>
 
       <div
         class="dropzone"
@@ -186,16 +192,20 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { parseExcelFile, importPlayers } from '../services/import.service.js';
+import { getClubById } from '../services/clubs.service.js';
 
 const route     = useRoute();
 const authStore = useAuthStore();
 
 const clubId = computed(() => route.params.clubId);
 const orgId  = computed(() => authStore.state.org?.id);
+
+// Config del club (para validar rango de folios)
+const clubConfig = ref(null);
 
 // Estado de la UI
 const phase       = ref('upload');   // upload | preview | importing | done
@@ -232,7 +242,7 @@ async function processFile(file) {
     return;
   }
   try {
-    rows.value = await parseExcelFile(file);
+    rows.value = await parseExcelFile(file, clubConfig.value);
     phase.value = 'preview';
   } catch (err) {
     uploadError.value = err.message;
@@ -263,6 +273,15 @@ function reset() {
   uploadError.value = '';
   if (fileInput.value) fileInput.value.value = '';
 }
+
+onMounted(async () => {
+  try {
+    const res = await getClubById(clubId.value);
+    clubConfig.value = res.data?.data ?? res.data ?? null;
+  } catch (e) {
+    console.error('[PlayersImport] getClubById error:', e);
+  }
+});
 </script>
 
 <style scoped>

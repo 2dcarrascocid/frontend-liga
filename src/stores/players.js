@@ -40,19 +40,16 @@ export const usePlayersStore = () => {
       state.items = data;
     } else if (data && Array.isArray(data.data)) {
       state.items = data.data;
-      if (data.meta) {
-        state.meta = data.meta;
-      }
+      // El backend devuelve next_token y total_registros en el nivel raíz
+      state.meta = {
+        next_token:      data.next_token      ?? null,
+        total_registros: data.total_registros ?? 0,
+        limit:           data.limit           ?? 10,
+      };
     } else if (data && Array.isArray(data.items)) {
       state.items = data.items;
-      if (data.meta) {
-        state.meta = data.meta;
-      }
     } else if (data && Array.isArray(data.players)) {
-       state.items = data.players;
-       if (data.meta) {
-         state.meta = data.meta;
-       }
+      state.items = data.players;
     } else {
       console.warn('Unexpected players response format:', data);
       state.items = [];
@@ -137,9 +134,7 @@ export const usePlayersStore = () => {
       } else {
           response = await createPlayer(payload);
       }
-      
-      // Add to list
-      state.items.push(response.data);
+
       return response.data;
     } catch (error) {
       setError(error.response?.data?.message || 'Error al guardar jugador');
