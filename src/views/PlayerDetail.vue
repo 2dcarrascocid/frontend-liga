@@ -123,6 +123,9 @@
           </div>
         </div>
 
+        <!-- Documentación -->
+        <PlayerDocuments :player-id="player.id" />
+
       </div>
     </div>
   </div>
@@ -134,6 +137,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { usePlayersStore } from '../stores/players';
 import { listCategories } from '../services/categories.service.js';
 import { getClubById } from '../services/clubs.service.js';
+import PlayerDocuments from '../components/PlayerDocuments.vue';
 
 const route  = useRoute();
 const router = useRouter();
