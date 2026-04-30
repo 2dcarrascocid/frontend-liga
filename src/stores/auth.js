@@ -39,23 +39,28 @@ const state = reactive({
 export const useAuthStore = () => {
     
     const setSession = (data) => {
-        const { access_token, refresh_token, user, orgs } = data;
-        
+        // El backend retorna { session: { access_token, refresh_token }, user, orgs }
+        const { session, user, orgs } = data;
+        const access_token = session?.access_token;
+        const refresh_token = session?.refresh_token;
+
+        // orgs viene como [{ role, org: { id, name, slug, ... } }] → normalizar
+        const normalizedOrgs = (orgs || []).map(m => ({ ...m.org, role: m.role }));
+
         state.accessToken = access_token;
         state.refreshToken = refresh_token;
         state.user = user;
-        state.orgs = orgs || [];
+        state.orgs = normalizedOrgs;
         state.isAuthenticated = true;
-        
+
         localStorage.setItem('accessToken', access_token);
         localStorage.setItem('refreshToken', refresh_token);
         localStorage.setItem('user', JSON.stringify(user));
-        
-        if (orgs && orgs.length > 0) {
-            localStorage.setItem('orgs', JSON.stringify(orgs));
-            // Default to first org if not set
+
+        if (normalizedOrgs.length > 0) {
+            localStorage.setItem('orgs', JSON.stringify(normalizedOrgs));
             if (!state.org) {
-                state.org = orgs[0];
+                state.org = normalizedOrgs[0];
                 localStorage.setItem('org', JSON.stringify(state.org));
             }
         } else {
@@ -71,10 +76,10 @@ export const useAuthStore = () => {
         state.error = null;
         try {
             const response = await authAPI.loginLocal(credentials);
-            setSession(response.data);
+            setSession(response.data.data);
             return response.data;
         } catch (error) {
-            state.error = error.response?.data?.message || 'Error al iniciar sesión';
+            state.error = error.response?.data?.error?.message || 'Error al iniciar sesión';
             throw error;
         } finally {
             state.loading = false;
@@ -86,10 +91,10 @@ export const useAuthStore = () => {
         state.error = null;
         try {
             const response = await authAPI.loginGoogle({ id_token: idToken });
-            setSession(response.data);
+            setSession(response.data.data);
             return response.data;
         } catch (error) {
-            state.error = error.response?.data?.message || 'Error al iniciar sesión con Google';
+            state.error = error.response?.data?.error?.message || 'Error al iniciar sesión con Google';
             throw error;
         } finally {
             state.loading = false;
@@ -100,12 +105,11 @@ export const useAuthStore = () => {
         state.loading = true;
         state.error = null;
         try {
-            // Adapt payload based on backend requirement, user said "{ access_token } o { id_token }"
             const response = await authAPI.loginFacebook({ access_token: accessToken });
-            setSession(response.data);
+            setSession(response.data.data);
             return response.data;
         } catch (error) {
-            state.error = error.response?.data?.message || 'Error al iniciar sesión con Facebook';
+            state.error = error.response?.data?.error?.message || 'Error al iniciar sesión con Facebook';
             throw error;
         } finally {
             state.loading = false;

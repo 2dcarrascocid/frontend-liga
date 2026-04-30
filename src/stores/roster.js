@@ -20,11 +20,16 @@ export const useRosterStore = () => {
     state.clubId = clubId;
     try {
       const response = await getRosterByClub(clubId);
-      const data = response.data;
+      // Backend retorna { success, data: { data: [...], ... } }
+      const envelope = response.data;
+      const data = envelope?.data ?? envelope;
+
       if (Array.isArray(data)) {
         state.items = data;
       } else if (data && Array.isArray(data.data)) {
         state.items = data.data;
+      } else if (data && Array.isArray(data.roster)) {
+        state.items = data.roster;
       } else if (data && Array.isArray(data.items)) {
         state.items = data.items;
       } else {

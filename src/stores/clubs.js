@@ -24,31 +24,33 @@ export const useClubsStore = () => {
     state.error = null;
     try {
       const response = await getClubs(params);
-      const data = response.data;
+      // Backend retorna { success, data: { clubs, nextToken } }
+      const envelope = response.data;
+      const data = envelope?.data ?? envelope;
 
       if (Array.isArray(data)) {
         state.items = data;
         state.meta.next_token = null;
         state.meta.total_registros = data.length;
+      } else if (data && Array.isArray(data.clubs)) {
+        state.items = data.clubs;
+        state.meta.next_token = data.nextToken ?? data.next_token ?? null;
+        state.meta.total_registros = data.clubs.length;
       } else if (data && Array.isArray(data.data)) {
         state.items = data.data;
-        state.meta.limit = data.limit ?? state.meta.limit;
-        state.meta.next_token = data.next_token ?? null;
-        state.meta.total_registros =
-          data.total_registros ?? data.total ?? state.meta.total_registros;
+        state.meta.next_token = data.nextToken ?? data.next_token ?? null;
+        state.meta.total_registros = data.total_registros ?? data.total ?? state.meta.total_registros;
       } else if (data && Array.isArray(data.items)) {
         state.items = data.items;
-        state.meta.limit = data.limit ?? state.meta.limit;
-        state.meta.next_token = data.next_token ?? null;
-        state.meta.total_registros =
-          data.total_registros ?? data.total ?? state.meta.total_registros;
+        state.meta.next_token = data.nextToken ?? data.next_token ?? null;
+        state.meta.total_registros = data.total_registros ?? data.total ?? state.meta.total_registros;
       } else {
         console.warn('Unexpected clubs response format:', data);
         state.items = [];
         state.meta.next_token = null;
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Error al cargar clubes');
+      setError(error.response?.data?.error?.message || 'Error al cargar clubes');
       throw error;
     } finally {
       state.loading = false;
@@ -60,8 +62,8 @@ export const useClubsStore = () => {
     state.error = null;
     try {
       const response = await getClubById(clubId);
-      const data = response.data;
-      const club = data?.club || data;
+      const inner = response.data?.data ?? response.data;
+      const club = inner?.club ?? inner;
       state.current = club;
       state.users = club?.users || [];
     } catch (error) {
@@ -78,16 +80,18 @@ export const useClubsStore = () => {
     try {
       if (payload.id) {
         const response = await updateClub(payload.id, payload);
-        state.current = response.data;
+        const inner = response.data?.data ?? response.data;
+        const club = inner?.club ?? inner;
+        state.current = club;
         const index = state.items.findIndex((c) => c.id === payload.id);
-        if (index !== -1) {
-          state.items[index] = response.data;
-        }
-        return response.data;
+        if (index !== -1) state.items[index] = club;
+        return club;
       }
       const response = await createClub(payload);
-      state.items.push(response.data);
-      return response.data;
+      const inner = response.data?.data ?? response.data;
+      const club = inner?.club ?? inner;
+      state.items.push(club);
+      return club;
     } catch (error) {
       setError(error.response?.data?.message || 'Error al guardar club');
       throw error;

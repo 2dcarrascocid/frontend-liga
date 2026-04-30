@@ -35,12 +35,15 @@ export const usePlayersStore = () => {
   };
 
   const processResponse = (response) => {
-    const data = response.data;
+    // Backend retorna { success, data: { data: [...], next_token, total_registros, limit } }
+    const envelope = response.data;
+    const data = envelope?.data ?? envelope;
+
     if (Array.isArray(data)) {
       state.items = data;
+      state.meta = { next_token: null, total_registros: data.length, limit: state.meta.limit };
     } else if (data && Array.isArray(data.data)) {
       state.items = data.data;
-      // El backend devuelve next_token y total_registros en el nivel raíz
       state.meta = {
         next_token:      data.next_token      ?? null,
         total_registros: data.total_registros ?? 0,
@@ -48,8 +51,10 @@ export const usePlayersStore = () => {
       };
     } else if (data && Array.isArray(data.items)) {
       state.items = data.items;
+      state.meta = { next_token: data.next_token ?? null, total_registros: data.items.length, limit: state.meta.limit };
     } else if (data && Array.isArray(data.players)) {
       state.items = data.players;
+      state.meta = { next_token: null, total_registros: data.players.length, limit: state.meta.limit };
     } else {
       console.warn('Unexpected players response format:', data);
       state.items = [];
@@ -103,8 +108,8 @@ export const usePlayersStore = () => {
     state.error = null;
     try {
       const response = await getPlayerById(playerId);
-      // Backend returns { player: {...} } — extract the player object
-      state.current = response.data?.player ?? response.data;
+      const inner = response.data?.data ?? response.data;
+      state.current = inner?.player ?? inner;
     } catch (error) {
       setError(error.response?.data?.message || 'Error al cargar jugador');
       throw error;
@@ -119,13 +124,14 @@ export const usePlayersStore = () => {
     try {
       if (payload.id) {
         const response = await updatePlayer(payload.id, payload);
-        state.current = response.data;
-        // Update in list if exists
+        const inner = response.data?.data ?? response.data;
+        const player = inner?.player ?? inner;
+        state.current = player;
         const index = state.items.findIndex((p) => p.id === payload.id);
         if (index !== -1) {
-          state.items[index] = { ...state.items[index], ...response.data };
+          state.items[index] = { ...state.items[index], ...player };
         }
-        return response.data;
+        return player;
       }
       
       let response;

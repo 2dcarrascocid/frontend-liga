@@ -266,7 +266,10 @@ const form = reactive({
 });
 
 const loadClubs = async () => {
-  await fetchClubs({ limit: itemsPerPage.value });
+  await fetchClubs({
+    limit: itemsPerPage.value,
+    org_id: authStore.state.org?.id,
+  });
   currentPage.value = 1;
   tokensHistory.value = [null];
 };
@@ -356,7 +359,7 @@ const goToNextPage = async () => {
   const token = meta.value?.next_token;
   if (!token) return;
   tokensHistory.value[currentPage.value] = token;
-  await fetchClubs({ limit: itemsPerPage.value, next_token: token });
+  await fetchClubs({ limit: itemsPerPage.value, next_token: token, org_id: authStore.state.org?.id });
   currentPage.value += 1;
 };
 
@@ -365,9 +368,9 @@ const goToPrevPage = async () => {
   const targetPage = currentPage.value - 1;
   const tokenForTargetPage = tokensHistory.value[targetPage - 1] ?? null;
   if (tokenForTargetPage) {
-    await fetchClubs({ limit: itemsPerPage.value, next_token: tokenForTargetPage });
+    await fetchClubs({ limit: itemsPerPage.value, next_token: tokenForTargetPage, org_id: authStore.state.org?.id });
   } else {
-    await fetchClubs({ limit: itemsPerPage.value });
+    await fetchClubs({ limit: itemsPerPage.value, org_id: authStore.state.org?.id });
   }
   currentPage.value = targetPage;
 };
@@ -378,7 +381,7 @@ const handlePageSizeChange = async (value) => {
   itemsPerPage.value = size;
   currentPage.value = 1;
   tokensHistory.value = [null];
-  await fetchClubs({ limit: size });
+  await fetchClubs({ limit: size, org_id: authStore.state.org?.id });
 };
 
 onMounted(() => {

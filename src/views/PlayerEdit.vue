@@ -32,8 +32,8 @@
             <input v-model="form.birth_date" type="date" class="input" />
           </div>
           <div class="input-group">
-            <label class="label">Identificación (RUT/DNI)</label>
-            <input v-model="form.national_id" class="input" />
+            <label class="label">RUT / DNI</label>
+            <input v-model="form.rut" class="input" />
           </div>
            <div class="input-group">
             <label class="label">Dirección</label>
@@ -52,11 +52,10 @@
           <div class="input-group">
             <label class="label">Categoría</label>
             <select v-model="form.category_id" class="input">
-                <option value="">Seleccione...</option>
-                <option value="ADULTOS">Adultos</option>
-                <option value="JUVENIL">Juvenil</option>
-                <option value="SENIOR">Senior</option>
-                <option value="FEMENINO">Femenino</option>
+                <option :value="null">Sin categoría</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                  {{ cat.name }}
+                </option>
             </select>
           </div>
           <div class="input-group">
@@ -68,10 +67,6 @@
                  <option value="MID">Mediocampista</option>
                  <option value="FWD">Delantero</option>
             </select>
-          </div>
-          <div class="input-group">
-            <label class="label">Número de Camiseta</label>
-            <input v-model="form.jersey_number" type="number" class="input" />
           </div>
         </div>
         
@@ -94,9 +89,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePlayersStore } from '../stores/players';
+import { listCategories } from '../services/categories.service.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -108,57 +104,66 @@ const form = ref({
     first_name: '',
     last_name: '',
     birth_date: '',
-    national_id: '',
+    rut: '',
     address: '',
     phone: '',
     email: '',
-    category_id: '',
+    category_id: null,
     position: '',
-    jersey_number: null
 });
 
+const categories  = ref([]);
 const selectedFile = ref(null);
-const loading = computed(() => playersStore.loading);
-const error = computed(() => playersStore.error);
+const loading = playersStore.loading;
+const error = playersStore.error;
 
 const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file) {
-        selectedFile.value = file;
-    }
+    if (file) selectedFile.value = file;
 };
 
 const loadPlayer = async () => {
     await playersStore.fetchPlayerById(playerId);
-    const p = playersStore.current;
-    if (p) {
-        // Map fields. Ensure dates are formatted for input[type="date"] (YYYY-MM-DD)
-        form.value = {
-            id: p.id,
-            first_name: p.first_name,
-            last_name: p.last_name,
-            birth_date: p.birth_date ? p.birth_date.split('T')[0] : '',
-            national_id: p.national_id,
-            address: p.address,
-            phone: p.phone,
-            email: p.email,
-            category_id: p.category_id,
-            position: p.position,
-            jersey_number: p.jersey_number
-        };
+    const p = playersStore.current.value;
+    if (!p) return;
+
+    form.value = {
+        id:          p.id,
+        first_name:  p.first_name  || '',
+        last_name:   p.last_name   || '',
+        birth_date:  p.birth_date  ? p.birth_date.split('T')[0] : '',
+        rut:         p.rut         || '',
+        address:     p.address     || '',
+        phone:       p.phone       || '',
+        email:       p.email       || '',
+        category_id: p.category_id || null,
+        position:    p.position    || '',
+    };
+
+    const clubId = p.active_roster?.club_id || p.club_id;
+    if (clubId) {
+        try {
+            const res = await listCategories(clubId);
+            categories.value = res.data?.data?.categories ?? [];
+        } catch (e) {
+            console.error('[PlayerEdit] listCategories error:', e);
+        }
     }
 };
 
 const savePlayer = async () => {
     try {
-        // 1. Update Player
-        await playersStore.createOrUpdatePlayer(form.value);
-        
-        // 2. Upload photo if selected
+        const payload = { ...form.value };
+        if (!payload.category_id) payload.category_id = null;
+        if (!payload.position)    payload.position    = null;
+        if (!payload.birth_date)  payload.birth_date  = null;
+
+        await playersStore.createOrUpdatePlayer(payload);
+
         if (selectedFile.value) {
             await playersStore.uploadPlayerPhoto(playerId, selectedFile.value);
         }
-        
+
         router.push(`/players/${playerId}`);
     } catch (e) {
         // Error handled in store

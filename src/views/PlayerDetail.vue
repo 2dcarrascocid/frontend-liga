@@ -205,8 +205,8 @@ onMounted(async () => {
                 listCategories(clubId),
                 getClubById(clubId),
             ]);
-            categories.value = catRes.data?.data ?? [];
-            clubName.value   = clubRes.data?.club?.name || '';
+            categories.value = catRes.data?.data?.categories ?? [];
+            clubName.value   = clubRes.data?.data?.club?.name || '';
         } catch (e) {
             console.error('[PlayerDetail] load extras error:', e);
         }

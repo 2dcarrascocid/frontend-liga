@@ -766,7 +766,7 @@ const fetchInactivePlayers = async () => {
   try {
     const { listPlayersByClub } = await import('../services/players.service.js');
     const res = await listPlayersByClub(route.params.clubId, { status: 'INACTIVE', limit: 100 });
-    inactivePlayers.value = res.data?.data ?? [];
+    inactivePlayers.value = res.data?.data?.data ?? [];
   } catch (e) {
     console.error('[ClubDetail] fetchInactivePlayers error:', e);
   } finally {
@@ -779,6 +779,9 @@ const switchTab = (key) => {
   activeTab.value = key;
   if (key === 'inactive_players' && inactivePlayers.value.length === 0) {
     fetchInactivePlayers();
+  }
+  if (key === 'edit') {
+    syncEditForm();
   }
 };
 
@@ -841,7 +844,8 @@ const fetchCategories = async () => {
   catError.value   = null;
   try {
     const res = await categoriesService.listCategories(route.params.clubId);
-    categories.value = res.data?.data ?? [];
+    // Backend: { success, data: { categories: [...] } }
+    categories.value = res.data?.data?.categories ?? [];
   } catch (e) {
     catError.value = e.response?.data?.error?.message || e.message || 'Error al cargar categorías';
   } finally {
@@ -926,7 +930,7 @@ const fetchAllClubs = async () => {
     const { getClubs } = await import('../services/clubs.service.js');
     const orgId = current.value?.org_id;
     const r = await getClubs({ limit: 100, ...(orgId ? { org_id: orgId } : {}) });
-    allClubs.value = (r.data?.data ?? []).filter(c => c.id !== route.params.clubId);
+    allClubs.value = (r.data?.data?.clubs ?? []).filter(c => c.id !== route.params.clubId);
     console.log('[transfers] allClubs:', allClubs.value.length);
   } catch (e) {
     console.error('[transfers] fetchAllClubs error:', e);
