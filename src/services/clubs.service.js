@@ -12,3 +12,7 @@ export const addClubUser = (clubId, data) => apiClient.post(`/clubs/${clubId}/us
 
 export const removeClubUser = (clubId, userId) => apiClient.delete(`/clubs/${clubId}/users/${userId}`);
 
+export const inviteClubAdmin   = (clubId, data)        => apiClient.post(`/clubs/${clubId}/admins`, data);
+export const getClubAdmins     = (clubId)               => apiClient.get(`/clubs/${clubId}/admins`);
+export const removeClubAdmin   = (clubId, adminUserId)  => apiClient.delete(`/clubs/${clubId}/admins/${adminUserId}`);
+

@@ -104,15 +104,16 @@
               <th>Nombre</th>
               <th>Nombre Corto</th>
               <th>Colores</th>
+              <th class="text-center">Jugadores Activos</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading && items.length === 0">
-              <td colspan="5" class="text-center py-lg">Cargando...</td>
+              <td colspan="6" class="text-center py-lg">Cargando...</td>
             </tr>
             <tr v-else-if="items.length === 0">
-              <td colspan="5" class="text-center py-lg">No hay clubes registrados.</td>
+              <td colspan="6" class="text-center py-lg">No hay clubes registrados.</td>
             </tr>
             <tr v-for="club in paginatedItems" :key="club.id">
               <td>
@@ -127,6 +128,11 @@
               <td>{{ club.short_name }}</td>
               <td>
                 <span class="badge">{{ club.colors || 'N/A' }}</span>
+              </td>
+              <td class="text-center">
+                <span class="player-count-badge" :class="{ 'player-count-badge--empty': !club.active_players_count }">
+                  {{ club.active_players_count ?? '—' }}
+                </span>
               </td>
               <td>
                 <button class="btn btn-sm btn-secondary" @click="goToDetail(club.id)">
@@ -160,6 +166,16 @@
           </div>
           <div class="club-card-mobile-body">
             <span class="badge">{{ club.colors || 'N/A' }}</span>
+            <span class="player-count-mobile">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              {{ club.active_players_count ?? 0 }} jugadores activos
+            </span>
           </div>
           <div class="club-card-mobile-footer">
             <button class="btn btn-sm btn-secondary btn-full" @click="goToDetail(club.id)">
@@ -557,7 +573,37 @@ onMounted(() => {
 }
 
 .club-card-mobile-body {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 0.75rem;
+}
+
+.player-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: rgba(8, 145, 178, 0.12);
+  color: var(--primary-solid);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.player-count-badge--empty {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+.player-count-mobile {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .club-card-mobile-footer {

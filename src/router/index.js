@@ -1,7 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import AcceptInvite from '../views/AcceptInvite.vue';
 
-const Login = () => import('../views/Login.vue');
+const Login          = () => import('../views/Login.vue');
+const ForgotPassword = () => import('../views/ForgotPassword.vue');
+const ResetPassword  = () => import('../views/ResetPassword.vue');
 const Bootstrap = () => import('../views/Bootstrap.vue');
 const Home = () => import('../views/Home.vue');
 const ClubsList = () => import('../views/ClubsList.vue');
@@ -25,6 +28,24 @@ const routes = [
         name: 'Login',
         component: Login,
         meta: { requiresAuth: false, guestOnly: true },
+    },
+    {
+        path: '/forgot-password',
+        name: 'ForgotPassword',
+        component: ForgotPassword,
+        meta: { requiresAuth: false, guestOnly: true },
+    },
+    {
+        path: '/reset-password',
+        name: 'ResetPassword',
+        component: ResetPassword,
+        meta: { requiresAuth: false },
+    },
+    {
+        path: '/accept-invite',
+        name: 'AcceptInvite',
+        component: AcceptInvite,
+        meta: { requiresAuth: false },
     },
     {
         path: '/bootstrap',

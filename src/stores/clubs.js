@@ -1,10 +1,11 @@
 import { reactive, toRefs } from 'vue';
-import { getClubs, createClub, getClubById, updateClub, addClubUser, removeClubUser } from '../services/clubs.service';
+import { getClubs, createClub, getClubById, updateClub, addClubUser, removeClubUser, inviteClubAdmin, getClubAdmins, removeClubAdmin } from '../services/clubs.service';
 
 const state = reactive({
   items: [],
   current: null,
   users: [],
+  admins: [],
   loading: false,
   error: null,
   meta: {
@@ -129,6 +130,47 @@ export const useClubsStore = () => {
     }
   };
 
+  const fetchClubAdmins = async (clubId) => {
+    state.loading = true;
+    state.error = null;
+    try {
+      const response = await getClubAdmins(clubId);
+      state.admins = response.data?.data?.admins || [];
+    } catch (error) {
+      setError(error.response?.data?.message || 'Error al cargar administradores');
+    } finally {
+      state.loading = false;
+    }
+  };
+
+  const inviteAdmin = async (clubId, email) => {
+    state.loading = true;
+    state.error = null;
+    try {
+      await inviteClubAdmin(clubId, { email });
+      await fetchClubAdmins(clubId);
+    } catch (error) {
+      setError(error.response?.data?.error?.message || 'Error al invitar administrador');
+      throw error;
+    } finally {
+      state.loading = false;
+    }
+  };
+
+  const removeAdmin = async (clubId, adminUserId) => {
+    state.loading = true;
+    state.error = null;
+    try {
+      await removeClubAdmin(clubId, adminUserId);
+      state.admins = state.admins.filter(a => a.user_id !== adminUserId);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Error al quitar administrador');
+      throw error;
+    } finally {
+      state.loading = false;
+    }
+  };
+
   return {
     ...toRefs(state),
     state,
@@ -137,5 +179,8 @@ export const useClubsStore = () => {
     createOrUpdateClub,
     addUserToClub,
     removeUserFromClub,
+    fetchClubAdmins,
+    inviteAdmin,
+    removeAdmin,
   };
 };

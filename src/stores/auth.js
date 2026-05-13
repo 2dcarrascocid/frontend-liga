@@ -155,6 +155,37 @@ export const useAuthStore = () => {
         // Redirect is handled by router or caller
     };
 
+    const forgotPassword = async (email) => {
+        state.loading = true
+        state.error = null
+        try {
+            const response = await authAPI.forgotPassword({ email })
+            return response.data
+        } catch (error) {
+            state.error = error.response?.data?.error?.message || 'Error al solicitar recuperación de contraseña'
+            throw error
+        } finally {
+            state.loading = false
+        }
+    }
+
+    const resetPassword = async (token, newPassword) => {
+        state.loading = true
+        state.error = null
+        try {
+            const response = await authAPI.resetPassword({
+                token,
+                new_password: newPassword,
+            })
+            return response.data
+        } catch (error) {
+            state.error = error.response?.data?.error?.message || 'Error al restablecer la contraseña'
+            throw error
+        } finally {
+            state.loading = false
+        }
+    }
+
     return {
         ...toRefs(state),
         state,
@@ -162,6 +193,8 @@ export const useAuthStore = () => {
         loginGoogle,
         loginFacebook,
         bootstrap,
-        logout
+        logout,
+        forgotPassword,
+        resetPassword,
     };
 };

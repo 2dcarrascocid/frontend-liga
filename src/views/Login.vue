@@ -45,8 +45,14 @@
             placeholder="••••••••"
           />
         </div>
-        <button 
-          type="submit" 
+        <div class="forgot-row">
+          <router-link to="/forgot-password" class="forgot-link">
+            ¿Olvidaste tu contraseña?
+          </router-link>
+        </div>
+
+        <button
+          type="submit"
           :disabled="authStore.state.loading"
           class="btn btn-primary btn-full"
         >
@@ -83,6 +89,22 @@
     </div>
   </div>
 </template>
+
+<style scoped>
+.forgot-row {
+  text-align: right;
+  margin-bottom: 12px;
+}
+.forgot-link {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--primary-solid);
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+  cursor: pointer;
+}
+.forgot-link:hover { opacity: 0.75; }
+</style>
 
 <script setup>
 import { ref } from 'vue';

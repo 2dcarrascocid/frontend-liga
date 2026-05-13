@@ -50,13 +50,12 @@ export default apiClient;
 
 // ==================== AUTH API ====================
 export const authAPI = {
-    loginLocal: (credentials) => apiClient.post('/auth/login/local', credentials),
-    loginGoogle: (data) => apiClient.post('/auth/login/google', data),
-    loginFacebook: (data) => apiClient.post('/auth/login/facebook', data),
-    bootstrap: (data) => apiClient.post('/auth/bootstrap', data),
-    // Helper to add x-api-key header specifically for bootstrap if not handled in interceptor globally
-    // But better to handle in interceptor or here.
-    // Let's rely on the interceptor modification I will do next.
+    loginLocal:     (credentials) => apiClient.post('/auth/login/local', credentials),
+    loginGoogle:    (data) => apiClient.post('/auth/login/google', data),
+    loginFacebook:  (data) => apiClient.post('/auth/login/facebook', data),
+    bootstrap:      (data) => apiClient.post('/auth/bootstrap', data),
+    forgotPassword: (data) => apiClient.post('/auth/forgot-password', data),
+    resetPassword:  (data) => apiClient.post('/auth/reset-password', data),
 };
 
 // ==================== CLUBS API ====================

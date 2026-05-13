@@ -31,7 +31,7 @@ main {
 }
 
 main.with-navbar {
-  padding-top: 70px;
+  padding-top: 86px;
 }
 
 /* Transiciones entre vistas */

@@ -43,6 +43,13 @@
       >
         Jugadores Inactivos
       </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'administradores' }"
+        @click="switchTab('administradores')"
+      >
+        Administradores
+      </button>
     </div>
 
     <!-- Filters (solo en activos) -->
@@ -171,6 +178,26 @@
            </div>
        </div>
     </div>
+
+    <!-- TAB: Administradores -->
+    <div v-if="activeTab === 'administradores'">
+      <div class="card mb-md">
+        <h3 class="mb-md">Administradores del Club</h3>
+        <div v-if="clubsStore.loading.value" class="text-center py-lg">Cargando...</div>
+        <div v-else-if="!clubAdmins.length" class="text-muted text-sm">
+          No hay administradores asignados a este club.
+        </div>
+        <div v-else class="admins-list">
+          <div v-for="admin in clubAdmins" :key="admin.user_id" class="admin-item">
+            <div class="admin-avatar-sm">{{ (admin.email || '?')[0].toUpperCase() }}</div>
+            <div>
+              <div class="admin-email">{{ admin.email }}</div>
+              <div class="text-muted text-sm">Admin Club</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -200,6 +227,8 @@ const items   = playersStore.items;
 const loading = playersStore.loading;
 const error   = playersStore.error;
 const meta    = playersStore.meta;
+
+const clubAdmins = computed(() => clubsStore.admins?.value ?? []);
 
 const filteredItems = computed(() => {
     if (!Array.isArray(items.value)) return [];
@@ -265,7 +294,15 @@ const switchTab = async (tab) => {
     page.value = 1;
     filters.value.q = '';
     filters.value.category_id = null;
-    await fetchPlayers();
+    if (tab === 'administradores') {
+        try {
+            await clubsStore.fetchClubAdmins(clubId);
+        } catch (e) {
+            console.error('[ClubPlayers] fetchClubAdmins error:', e);
+        }
+    } else {
+        await fetchPlayers();
+    }
 };
 
 const handleSearch = () => {

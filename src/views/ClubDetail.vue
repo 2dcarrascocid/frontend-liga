@@ -480,6 +480,51 @@
 
     </div>
 
+    <!-- TAB: Administradores -->
+    <div v-if="activeTab === 'admins'">
+      <div class="card mb-lg">
+        <div class="flex justify-between items-center mb-md">
+          <h3>Administradores del Club</h3>
+        </div>
+
+        <!-- Formulario invitación -->
+        <form class="invite-form mb-lg" @submit.prevent="handleInviteAdmin">
+          <div class="input-group flex-1">
+            <label class="label">Email del nuevo administrador</label>
+            <input v-model="inviteEmail" type="email" required class="input" placeholder="admin@ejemplo.com" />
+          </div>
+          <div class="flex justify-end mt-md">
+            <button type="submit" class="btn btn-primary" :disabled="loading">
+              {{ loading ? 'Enviando...' : 'Invitar administrador' }}
+            </button>
+          </div>
+        </form>
+
+        <div v-if="inviteSuccess" class="alert alert-success mb-md">
+          Invitación enviada. El usuario recibirá un correo con instrucciones.
+        </div>
+
+        <!-- Listado de admins -->
+        <div v-if="admins.length === 0" class="text-muted text-sm">
+          No hay administradores asignados a este club.
+        </div>
+        <div v-else class="admins-table">
+          <div v-for="admin in admins" :key="admin.user_id" class="admin-row">
+            <div class="admin-avatar">
+              {{ (admin.email || '?')[0].toUpperCase() }}
+            </div>
+            <div class="admin-info">
+              <div class="admin-email">{{ admin.email }}</div>
+              <div class="text-muted text-sm">Admin Club</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" @click="handleRemoveAdmin(admin.user_id)">
+              Quitar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB: Categorías -->
     <div v-if="activeTab === 'categories'">
       <div class="card mb-lg">
@@ -582,7 +627,7 @@ import * as transfersService  from '../services/transfers.service.js';
 
 const route  = useRoute();
 const router = useRouter();
-const { current, users, loading, error, fetchClubById, addUserToClub, removeUserFromClub, createOrUpdateClub } = useClubsStore();
+const { current, users, admins, loading, error, fetchClubById, addUserToClub, removeUserFromClub, createOrUpdateClub, fetchClubAdmins, inviteAdmin, removeAdmin } = useClubsStore();
 const playersStore = usePlayersStore();
 const authStore    = useAuthStore();
 
@@ -592,6 +637,7 @@ const tabs = [
   { key: 'inactive_players', label: 'Jugadores Inactivos' },
   { key: 'transfers',        label: 'Traspasos' },
   { key: 'categories',       label: 'Categorías' },
+  { key: 'admins',           label: 'Administradores' },
   { key: 'edit',             label: 'Editar Club' },
 ];
 const activeTab = ref('players');
@@ -783,6 +829,28 @@ const switchTab = (key) => {
   if (key === 'edit') {
     syncEditForm();
   }
+  if (key === 'admins') {
+    fetchClubAdmins(route.params.clubId);
+  }
+};
+
+// ── Admin-Club ─────────────────────────────────────────
+const inviteEmail   = ref('');
+const inviteSuccess = ref(false);
+
+const handleInviteAdmin = async () => {
+  inviteSuccess.value = false;
+  try {
+    await inviteAdmin(route.params.clubId, inviteEmail.value);
+    inviteEmail.value   = '';
+    inviteSuccess.value = true;
+    setTimeout(() => { inviteSuccess.value = false; }, 4000);
+  } catch (e) { /* error handled in store */ }
+};
+
+const handleRemoveAdmin = async (adminUserId) => {
+  if (!confirm('¿Quitar este administrador del club?')) return;
+  await removeAdmin(route.params.clubId, adminUserId);
 };
 
 const togglePlayerStatus = async (item) => {
@@ -1155,6 +1223,52 @@ onMounted(async () => {
 }
 
 /* ── Users ── */
+/* ── Administradores ── */
+.invite-form {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+}
+
+.admins-table { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.admin-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0891B2, #22D3EE);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-info { flex: 1; display: flex; flex-direction: column; }
+.admin-email { font-weight: 500; font-size: 0.9rem; }
+
+.alert-success {
+  background: rgba(5, 150, 105, 0.1);
+  border: 1px solid rgba(5, 150, 105, 0.3);
+  color: #065F46;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* ── */
 .users-table { display: flex; flex-direction: column; gap: 0.75rem; }
 
 .user-row {
