@@ -80,8 +80,8 @@
               <tr>
                 <th>Foto</th>
                 <th>Nombre</th>
-                <th>Posición</th>
                 <th>Folio</th>
+                <th>Club</th>
                 <th>Estado</th>
               </tr>
             </thead>
@@ -98,11 +98,11 @@
                   </div>
                 </td>
                 <td>{{ player.first_name }} {{ player.last_name }}</td>
-                <td>{{ player.position || '—' }}</td>
-                <td>{{ player.active_roster?.club_folio || '—' }}</td>
+                <td>{{ player.club_folio ?? '—' }}</td>
+                <td>{{ player.club_name || 'Sin club' }}</td>
                 <td>
-                  <span class="badge" :class="statusClass(player.active_roster?.status)">
-                    {{ player.active_roster?.status || 'SIN CLUB' }}
+                  <span class="badge" :class="statusClass(player.status)">
+                    {{ statusLabel(player.status) }}
                   </span>
                 </td>
               </tr>
@@ -258,11 +258,14 @@ const goToDetail = (id) => {
   router.push(`/players/${id}`);
 };
 
-const statusClass = (status) => {
-  if (status === 'LOAN') return 'status-loan';
-  if (status === 'INACTIVE') return 'status-inactive';
-  return 'status-active';
+const statusMeta = {
+  ACTIVE:   { label: 'Activo',    class: 'status-active' },
+  INACTIVE: { label: 'Inactivo',  class: 'status-inactive' },
+  LOAN:     { label: 'Préstamo',  class: 'status-loan' },
 };
+
+const statusClass = (status) => statusMeta[status]?.class || 'status-inactive';
+const statusLabel = (status) => statusMeta[status]?.label || status || 'Sin estado';
 
 // Al cambiar de tab, seleccionamos su primer tile por defecto.
 watch(activeTab, () => {
@@ -453,5 +456,20 @@ onMounted(() => {
 
 .table-row-clickable { cursor: pointer; }
 .table-row-clickable:hover { background: var(--bg-tertiary, rgba(255,255,255,0.03)); }
+
+.status-active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+}
+
+.status-inactive {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+.status-loan {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
 </style>
 
