@@ -95,129 +95,179 @@
       </form>
     </div>
 
-    <div v-if="viewMode === 'list'" class="card p-0">
-      <div class="table-container">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Logo</th>
-              <th>Nombre</th>
-              <th>Nombre Corto</th>
-              <th>Colores</th>
-              <th class="text-center">Jugadores Activos</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="loading && items.length === 0">
-              <td colspan="6" class="text-center py-lg">Cargando...</td>
-            </tr>
-            <tr v-else-if="items.length === 0">
-              <td colspan="6" class="text-center py-lg">No hay clubes registrados.</td>
-            </tr>
-            <tr v-for="club in paginatedItems" :key="club.id">
-              <td>
+    <template v-if="viewMode === 'list'">
+      <!-- Dashboard: tarjetas-submenú -->
+      <section class="pd-dash mb-lg">
+        <div class="pd-dash__glow pd-dash__glow--green" aria-hidden="true"></div>
+        <div class="pd-dash__glow pd-dash__glow--blue" aria-hidden="true"></div>
+
+        <div class="pd-dash__head">
+          <span class="pd-dash__kicker">Resumen de la liga</span>
+          <h3 class="pd-dash__title">
+            Panorama de <span class="pd-dash__title-accent">clubes</span>
+          </h3>
+          <p class="pd-dash__desc">Estado general de los equipos de la organización, actualizado en vivo.</p>
+        </div>
+
+        <div class="pd-dash__grid">
+          <article
+            v-for="tile in dashboardTiles"
+            :key="tile.key"
+            class="pd-tile"
+            :class="[`pd-tile--${tile.color}`, { 'pd-tile--selected': selectedTileKey === tile.key }]"
+            role="button"
+            tabindex="0"
+            @click="selectTile(tile.key)"
+            @keyup.enter="selectTile(tile.key)"
+          >
+            <div class="pd-tile__icon" v-html="tile.icon"></div>
+            <div class="pd-tile__body">
+              <span class="pd-tile__label">{{ tile.label }}</span>
+              <strong class="pd-tile__value">{{ tile.value }}</strong>
+              <span class="pd-tile__trend">{{ tile.meta }}</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Tabla, según la tarjeta seleccionada -->
+      <div class="card p-0">
+        <div class="flex justify-between items-center p-md" style="border-bottom: 1px solid var(--border-color);">
+          <h3 class="m-0">{{ selectedTileLabel }}</h3>
+          <span v-if="isClubsTableAvailable" class="text-muted text-sm">
+            {{ filteredClubs.length }} en total
+          </span>
+        </div>
+
+        <template v-if="isClubsTableAvailable">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Logo</th>
+                  <th>Nombre</th>
+                  <th>Nombre Corto</th>
+                  <th>Colores</th>
+                  <th class="text-center">Jugadores Activos</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="loading && items.length === 0">
+                  <td colspan="6" class="text-center py-lg">Cargando...</td>
+                </tr>
+                <tr v-else-if="filteredClubs.length === 0">
+                  <td colspan="6" class="text-center py-lg">No hay clubes en esta selección.</td>
+                </tr>
+                <tr v-for="club in paginatedItems" :key="club.id">
+                  <td>
+                    <div class="club-logo-small">
+                      <img v-if="club.logo_url" :src="club.logo_url" :alt="club.name" />
+                      <span v-else class="logo-placeholder">⚽</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="font-medium">{{ club.name }}</span>
+                  </td>
+                  <td>{{ club.short_name }}</td>
+                  <td>
+                    <span class="badge">{{ club.colors || 'N/A' }}</span>
+                  </td>
+                  <td class="text-center">
+                    <span class="player-count-badge" :class="{ 'player-count-badge--empty': !club.active_players_count }">
+                      {{ club.active_players_count ?? '—' }}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="btn btn-sm btn-secondary" @click="goToDetail(club.id)">
+                      Ver Detalle
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="cards-container-mobile">
+            <div
+              v-for="club in paginatedItems"
+              :key="club.id"
+              class="club-card-mobile"
+            >
+              <div class="club-card-mobile-header">
                 <div class="club-logo-small">
                   <img v-if="club.logo_url" :src="club.logo_url" :alt="club.name" />
                   <span v-else class="logo-placeholder">⚽</span>
                 </div>
-              </td>
-              <td>
-                <span class="font-medium">{{ club.name }}</span>
-              </td>
-              <td>{{ club.short_name }}</td>
-              <td>
+                <div class="club-card-mobile-title">
+                  <div class="font-medium">
+                    {{ club.name }}
+                  </div>
+                  <div class="text-sm text-muted">
+                    {{ club.short_name }}
+                  </div>
+                </div>
+              </div>
+              <div class="club-card-mobile-body">
                 <span class="badge">{{ club.colors || 'N/A' }}</span>
-              </td>
-              <td class="text-center">
-                <span class="player-count-badge" :class="{ 'player-count-badge--empty': !club.active_players_count }">
-                  {{ club.active_players_count ?? '—' }}
+                <span class="player-count-mobile">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  {{ club.active_players_count ?? 0 }} jugadores activos
                 </span>
-              </td>
-              <td>
-                <button class="btn btn-sm btn-secondary" @click="goToDetail(club.id)">
+              </div>
+              <div class="club-card-mobile-footer">
+                <button class="btn btn-sm btn-secondary btn-full" @click="goToDetail(club.id)">
                   Ver Detalle
                 </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </div>
+            </div>
+          </div>
 
-      <div class="cards-container-mobile">
-        <div
-          v-for="club in paginatedItems"
-          :key="club.id"
-          class="club-card-mobile"
-        >
-          <div class="club-card-mobile-header">
-            <div class="club-logo-small">
-              <img v-if="club.logo_url" :src="club.logo_url" :alt="club.name" />
-              <span v-else class="logo-placeholder">⚽</span>
+          <div v-if="filteredClubs.length > 0" class="pagination mb-md">
+            <button
+              class="pagination-btn"
+              :disabled="!hasPrevPage"
+              @click="goToPrevPage"
+            >
+              Anterior
+            </button>
+
+            <div class="pagination-center">
+              <select
+                class="input pagination-size"
+                :value="itemsPerPage"
+                @change="handlePageSizeChange($event.target.value)"
+              >
+                <option v-for="size in pageSizeOptions" :key="size" :value="size">
+                  {{ size }}
+                </option>
+              </select>
+              <span class="pagination-info">
+                Página {{ currentPage }} de {{ totalPages }}
+              </span>
             </div>
-            <div class="club-card-mobile-title">
-              <div class="font-medium">
-                {{ club.name }}
-              </div>
-              <div class="text-sm text-muted">
-                {{ club.short_name }}
-              </div>
-            </div>
-          </div>
-          <div class="club-card-mobile-body">
-            <span class="badge">{{ club.colors || 'N/A' }}</span>
-            <span class="player-count-mobile">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-              {{ club.active_players_count ?? 0 }} jugadores activos
-            </span>
-          </div>
-          <div class="club-card-mobile-footer">
-            <button class="btn btn-sm btn-secondary btn-full" @click="goToDetail(club.id)">
-              Ver Detalle
+
+            <button
+              class="pagination-btn"
+              :disabled="!hasNextPage"
+              @click="goToNextPage"
+            >
+              Siguiente
             </button>
           </div>
+        </template>
+
+        <div v-else class="text-center py-lg text-muted">
+          Esta vista aún no está disponible: el backend todavía no expone la fecha de alta de los clubes.
         </div>
       </div>
-      
-      <div v-if="items.length > 0" class="pagination mb-md">
-        <button 
-          class="pagination-btn" 
-          :disabled="!hasPrevPage" 
-          @click="goToPrevPage"
-        >
-          Anterior
-        </button>
-
-        <div class="pagination-center">
-          <select
-            class="input pagination-size"
-            :value="itemsPerPage"
-            @change="handlePageSizeChange($event.target.value)"
-          >
-            <option v-for="size in pageSizeOptions" :key="size" :value="size">
-              {{ size }}
-            </option>
-          </select>
-          <span class="pagination-info">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-        </div>
-
-        <button 
-          class="pagination-btn" 
-          :disabled="!hasNextPage" 
-          @click="goToNextPage"
-        >
-          Siguiente
-        </button>
-      </div>
-    </div>
+    </template>
 
     <!-- Post Save Modal/Dialog Overlay -->
     <div v-if="showPostSaveDialog" class="modal-overlay">
@@ -245,7 +295,7 @@ import { useAuthStore } from '../stores/auth';
 import { uploadImage } from '../services/cloudinary.service';
 
 const router = useRouter();
-const { items, loading, error, meta, fetchClubs, createOrUpdateClub } = useClubsStore();
+const { items, loading, error, fetchClubs, createOrUpdateClub } = useClubsStore();
 const authStore = useAuthStore();
 
 const viewMode = ref('list');
@@ -255,18 +305,70 @@ const showPostSaveDialog = ref(false);
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 const pageSizeOptions = [10, 20, 50];
-const tokensHistory = ref([null]);
 
-const paginatedItems = computed(() => items.value);
+// Carga todos los clubes de la org de una vez: sin endpoint de filtro por
+// estado/fecha en el backend, el submenú (activos/inactivos/promedio) y su
+// paginación se calculan en el cliente sobre este set completo.
+const CLUBS_FETCH_LIMIT = 500;
 
-const totalPages = computed(() => {
-  const total = meta.value?.total_registros || 0;
-  const limit = itemsPerPage.value || meta.value?.limit || 10;
-  if (!total || !limit) return 1;
-  return Math.ceil(total / limit);
+const icons = {
+  checkCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  xCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+  userPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+};
+
+// Un club se considera "activo" si tiene al menos un jugador activo en plantilla;
+// no existe (aún) un campo de estado propio del club en el backend.
+const activeClubs   = computed(() => items.value.filter(c => (c.active_players_count || 0) > 0));
+const inactiveClubs = computed(() => items.value.filter(c => !((c.active_players_count || 0) > 0)));
+
+const avgPlayersPerClub = computed(() => {
+  const total = items.value.length;
+  if (!total) return 0;
+  const sum = items.value.reduce((acc, c) => acc + (c.active_players_count || 0), 0);
+  return Math.round((sum / total) * 10) / 10;
 });
 
-const hasNextPage = computed(() => !!meta.value?.next_token);
+const dashboardTiles = computed(() => [
+  { key: 'active',   label: 'Equipos activos',   value: activeClubs.value.length,   meta: 'con jugadores activos', color: 'green', icon: icons.checkCircle },
+  { key: 'inactive', label: 'Equipos inactivos', value: inactiveClubs.value.length, meta: 'sin jugadores activos', color: 'red',   icon: icons.xCircle },
+  { key: 'new',      label: 'Equipos nuevos',    value: '—',                        meta: 'aún no disponible',    color: 'gold',  icon: icons.userPlus },
+  { key: 'average',  label: 'Promedio de jugadores por equipo', value: avgPlayersPerClub.value, meta: 'jugadores / equipo', color: 'blue', icon: icons.users },
+]);
+
+const selectedTileKey = ref('active');
+
+const selectedTileLabel = computed(() => {
+  const tile = dashboardTiles.value.find(t => t.key === selectedTileKey.value);
+  return tile ? tile.label : '';
+});
+
+// "new" no tiene datos reales (sin fecha de alta en el backend); el resto sí.
+const isClubsTableAvailable = computed(() => selectedTileKey.value !== 'new');
+
+const filteredClubs = computed(() => {
+  if (selectedTileKey.value === 'active')   return activeClubs.value;
+  if (selectedTileKey.value === 'inactive') return inactiveClubs.value;
+  if (selectedTileKey.value === 'average') {
+    return [...items.value].sort((a, b) => (b.active_players_count || 0) - (a.active_players_count || 0));
+  }
+  return [];
+});
+
+const selectTile = (key) => {
+  selectedTileKey.value = key;
+  currentPage.value = 1;
+};
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredClubs.value.length / itemsPerPage.value)));
+
+const paginatedItems = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  return filteredClubs.value.slice(start, start + itemsPerPage.value);
+});
+
+const hasNextPage = computed(() => currentPage.value < totalPages.value);
 const hasPrevPage = computed(() => currentPage.value > 1);
 
 const form = reactive({
@@ -283,11 +385,10 @@ const form = reactive({
 
 const loadClubs = async () => {
   await fetchClubs({
-    limit: itemsPerPage.value,
+    limit: CLUBS_FETCH_LIMIT,
     org_id: authStore.state.org?.id,
   });
   currentPage.value = 1;
-  tokensHistory.value = [null];
 };
 
 const toggleViewMode = () => {
@@ -370,34 +471,21 @@ const goToDetail = (id) => {
   router.push(`/clubs/${id}`);
 };
 
-const goToNextPage = async () => {
+const goToNextPage = () => {
   if (!hasNextPage.value) return;
-  const token = meta.value?.next_token;
-  if (!token) return;
-  tokensHistory.value[currentPage.value] = token;
-  await fetchClubs({ limit: itemsPerPage.value, next_token: token, org_id: authStore.state.org?.id });
   currentPage.value += 1;
 };
 
-const goToPrevPage = async () => {
+const goToPrevPage = () => {
   if (!hasPrevPage.value) return;
-  const targetPage = currentPage.value - 1;
-  const tokenForTargetPage = tokensHistory.value[targetPage - 1] ?? null;
-  if (tokenForTargetPage) {
-    await fetchClubs({ limit: itemsPerPage.value, next_token: tokenForTargetPage, org_id: authStore.state.org?.id });
-  } else {
-    await fetchClubs({ limit: itemsPerPage.value, org_id: authStore.state.org?.id });
-  }
-  currentPage.value = targetPage;
+  currentPage.value -= 1;
 };
 
-const handlePageSizeChange = async (value) => {
+const handlePageSizeChange = (value) => {
   const size = Number(value);
   if (!pageSizeOptions.includes(size)) return;
   itemsPerPage.value = size;
   currentPage.value = 1;
-  tokensHistory.value = [null];
-  await fetchClubs({ limit: size, org_id: authStore.state.org?.id });
 };
 
 onMounted(() => {
@@ -586,7 +674,7 @@ onMounted(() => {
   min-width: 32px;
   padding: 0.2rem 0.6rem;
   border-radius: var(--radius-full);
-  background: rgba(8, 145, 178, 0.12);
+  background: rgba(41, 182, 246, 0.12);
   color: var(--primary-solid);
   font-size: 0.8rem;
   font-weight: 700;
@@ -651,5 +739,146 @@ onMounted(() => {
   color: var(--color-dark-text);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
+}
+
+/* ── Dashboard (estilo landing) ── */
+.pd-dash {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-card, #14151d);
+  border: 1px solid var(--border-subtle, #23252f);
+  border-radius: var(--border-radius-lg, 16px);
+  padding: 2rem 1.5rem;
+}
+
+.pd-dash__glow {
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: 0;
+}
+.pd-dash__glow--green { top: -140px; left: -100px; background: var(--color-green-600, #00e676); }
+.pd-dash__glow--blue  { bottom: -160px; right: -100px; background: var(--color-blue-500, #4fc3f7); }
+
+.pd-dash__head {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 520px;
+  margin: 0 auto 1.75rem;
+}
+
+.pd-dash__kicker {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-blue-500, #4fc3f7);
+  margin-bottom: 0.5rem;
+}
+
+.pd-dash__title {
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5rem;
+}
+
+.pd-dash__title-accent {
+  background: linear-gradient(135deg, var(--color-green-600, #00e676), var(--color-blue-500, #4fc3f7));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.pd-dash__desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.pd-dash__grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.pd-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  background: var(--bg-tertiary, rgba(255,255,255,0.03));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--border-radius-md, 12px);
+  padding: 1.1rem;
+  cursor: pointer;
+  transition: transform var(--transition-fast, 0.15s ease), border-color var(--transition-fast, 0.15s ease);
+}
+
+.pd-tile:hover {
+  transform: translateY(-3px);
+  border-color: var(--pd-accent, var(--color-green-600));
+}
+
+.pd-tile--selected {
+  border-color: var(--pd-accent, var(--color-green-600));
+  box-shadow: 0 0 0 1px var(--pd-accent, var(--color-green-600));
+}
+
+.pd-tile--green { --pd-accent: var(--color-green-600, #00e676); }
+.pd-tile--blue  { --pd-accent: var(--color-blue-500, #4fc3f7); }
+.pd-tile--gold  { --pd-accent: var(--color-gold, #ffd54f); }
+.pd-tile--red   { --pd-accent: var(--color-danger, #ef5350); }
+
+.pd-tile__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--pd-accent) 16%, transparent);
+  color: var(--pd-accent);
+}
+
+.pd-tile__icon :deep(svg) {
+  width: 20px;
+  height: 20px;
+}
+
+.pd-tile__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.pd-tile__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.pd-tile__value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.pd-tile__trend {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
 }
 </style>

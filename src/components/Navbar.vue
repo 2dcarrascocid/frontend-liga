@@ -11,8 +11,8 @@
             <circle cx="15" cy="18.5" r="3" fill="white"/>
             <defs>
               <linearGradient id="nav-grad" x1="0" y1="0" x2="30" y2="30">
-                <stop offset="0%" stop-color="#0891B2"/>
-                <stop offset="100%" stop-color="#22D3EE"/>
+                <stop offset="0%" stop-color="#00c853"/>
+                <stop offset="100%" stop-color="#00e676"/>
               </linearGradient>
             </defs>
           </svg>
@@ -29,51 +29,17 @@
           Home
         </router-link>
 
-        <!-- Clubes (con dropdown) -->
-        <div
-          class="nav-item-dropdown"
-          :class="{ 'is-open': clubesMenuOpen, 'is-active-section': isClubesSection }"
-        >
-          <button class="nav-link nav-dropdown-trigger" @click="toggleClubesMenu" :aria-expanded="clubesMenuOpen" aria-haspopup="true">
-            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Clubes
-            <svg class="dropdown-chevron" :class="{ 'is-rotated': clubesMenuOpen }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
+        <!-- Clubes -->
+        <router-link to="/clubs" class="nav-link" @click="closeMobileMenu" aria-label="Ir a clubes">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Clubes
+        </router-link>
 
-          <div class="nav-dropdown" v-show="clubesMenuOpen" role="menu">
-            <router-link
-              to="/clubs"
-              class="nav-dropdown-item"
-              @click="closeAll"
-              role="menuitem"
-            >
-              <span class="dropdown-item-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              </span>
-              <span>
-                <strong>Lista de Clubes</strong>
-                <small>Ver y gestionar clubes</small>
-              </span>
-            </router-link>
-
-            <div class="nav-dropdown-divider" role="separator"></div>
-
-            <router-link
-              to="/players"
-              class="nav-dropdown-item"
-              @click="closeAll"
-              role="menuitem"
-            >
-              <span class="dropdown-item-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </span>
-              <span>
-                <strong>Jugadores</strong>
-                <small>Todos los jugadores de la org</small>
-              </span>
-            </router-link>
-          </div>
-        </div>
+        <!-- Jugadores -->
+        <router-link to="/players" class="nav-link" @click="closeMobileMenu" aria-label="Ir a jugadores">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Jugadores
+        </router-link>
 
       </div>
 
@@ -105,20 +71,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
-const route  = useRoute();
 const authStore = useAuthStore();
 
 const mobileMenuOpen = ref(false);
 const userMenuOpen   = ref(false);
-const clubesMenuOpen = ref(false);
-
-const isClubesSection = computed(() =>
-  route.path.startsWith('/clubs') || route.path.startsWith('/players')
-);
 
 const userName = computed(() =>
   authStore.user?.value?.nombre || authStore.state?.user?.email || 'Usuario'
@@ -132,14 +92,11 @@ const userInitials = computed(() => {
 const toggleMobileMenu = () => { mobileMenuOpen.value = !mobileMenuOpen.value; };
 const closeMobileMenu  = () => { mobileMenuOpen.value = false; };
 const toggleUserMenu   = () => { userMenuOpen.value = !userMenuOpen.value; };
-const toggleClubesMenu = () => { clubesMenuOpen.value = !clubesMenuOpen.value; };
-const closeAll         = () => { clubesMenuOpen.value = false; mobileMenuOpen.value = false; };
 
-// Cierra todos los dropdowns al hacer click fuera del navbar
+// Cierra el menú de usuario al hacer click fuera del navbar
 function onClickOutside(e) {
   if (!e.target.closest('.navbar')) {
-    clubesMenuOpen.value = false;
-    userMenuOpen.value   = false;
+    userMenuOpen.value = false;
   }
 }
 onMounted(()  => document.addEventListener('click', onClickOutside));
@@ -162,11 +119,12 @@ const handleLogout = async () => {
   width: calc(100% - 32px);
   max-width: 1200px;
   height: 62px;
-  background: rgba(232, 240, 245, 0.88);
+  background: rgba(13, 14, 20, 0.78);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-radius: 60px;
-  box-shadow: -5px -5px 12px rgba(255,255,255,0.9), 5px 5px 12px rgba(184,197,208,0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
   z-index: 1000;
 }
 
@@ -196,7 +154,7 @@ const handleLogout = async () => {
 .logo:hover { opacity: 0.8; }
 .logo-icon { flex-shrink: 0; }
 .logo-text {
-  background: linear-gradient(135deg, #0891B2, #0369A1);
+  background: linear-gradient(135deg, #00e676, #4fc3f7);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -230,108 +188,19 @@ const handleLogout = async () => {
 
 .nav-link:hover {
   color: var(--primary-solid);
-  background: rgba(8, 145, 178, 0.08);
+  background: rgba(0, 230, 118, 0.1);
 }
 .nav-link.router-link-active {
   color: var(--primary-solid);
-  background: rgba(8, 145, 178, 0.1);
-  box-shadow: inset -2px -2px 5px rgba(255,255,255,0.7), inset 2px 2px 5px rgba(184,197,208,0.5);
+  background: rgba(0, 230, 118, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(0, 230, 118, 0.25);
 }
 
 .nav-icon { flex-shrink: 0; }
 
-/* ── Dropdown wrapper ────────────────────────────────────────────────────── */
-.nav-item-dropdown { position: relative; }
-
-.nav-item-dropdown.is-active-section .nav-dropdown-trigger {
-  color: var(--primary-solid);
-  background: rgba(8, 145, 178, 0.1);
-  box-shadow: inset -2px -2px 5px rgba(255,255,255,0.7), inset 2px 2px 5px rgba(184,197,208,0.5);
-}
-
-.nav-dropdown-trigger { font-family: 'Raleway', sans-serif; }
-
-.dropdown-chevron {
-  flex-shrink: 0;
-  color: var(--text-muted);
-  transition: transform var(--transition-base);
-}
-.dropdown-chevron.is-rotated { transform: rotate(180deg); }
-
-/* ── Dropdown panel ──────────────────────────────────────────────────────── */
-.nav-dropdown {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  min-width: 230px;
-  background: rgba(232, 240, 245, 0.96);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 20px;
-  box-shadow: -6px -6px 14px rgba(255,255,255,0.85), 6px 6px 14px rgba(184,197,208,0.7);
-  padding: var(--spacing-sm);
-  animation: dropdownIn 0.18s ease-out;
-  z-index: 20;
-}
-
 @keyframes dropdownIn {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-.nav-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0.625rem 0.875rem;
-  border-radius: 12px;
-  text-decoration: none;
-  color: var(--text-muted);
-  transition: all var(--transition-base);
-  cursor: pointer;
-}
-.nav-dropdown-item:hover {
-  background: rgba(8, 145, 178, 0.08);
-  color: var(--primary-solid);
-}
-.nav-dropdown-item.router-link-active {
-  color: var(--primary-solid);
-  background: rgba(8, 145, 178, 0.1);
-}
-
-.dropdown-item-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: rgba(8, 145, 178, 0.1);
-  color: var(--primary-solid);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.nav-dropdown-item span:not(.dropdown-item-icon) {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.nav-dropdown-item strong {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.2;
-}
-.nav-dropdown-item small {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-.nav-dropdown-divider {
-  height: 1px;
-  background: var(--border-color);
-  margin: 6px 8px;
 }
 
 /* ── User menu ───────────────────────────────────────────────────────────── */
@@ -347,27 +216,28 @@ const handleLogout = async () => {
   align-items: center;
   gap: 8px;
   padding: 6px 14px 6px 6px;
-  background: rgba(232, 240, 245, 1);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-full);
-  box-shadow: -3px -3px 7px rgba(255,255,255,0.9), 3px 3px 7px rgba(184,197,208,0.65);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   transition: all var(--transition-base);
 }
 .user-menu:hover {
-  box-shadow: inset -3px -3px 6px rgba(255,255,255,0.8), inset 3px 3px 6px rgba(184,197,208,0.55);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .user-avatar {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0891B2, #22D3EE);
+  background: linear-gradient(135deg, #00c853, #4fc3f7);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 0.8125rem;
-  color: white;
+  color: #04120a;
   flex-shrink: 0;
 }
 
@@ -389,10 +259,11 @@ const handleLogout = async () => {
   top: calc(100% + 8px);
   right: 0;
   min-width: 200px;
-  background: rgba(232, 240, 245, 0.97);
+  background: rgba(16, 17, 24, 0.97);
   backdrop-filter: blur(12px);
   border-radius: 18px;
-  box-shadow: -6px -6px 14px rgba(255,255,255,0.85), 6px 6px 14px rgba(184,197,208,0.7);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
   padding: var(--spacing-sm);
   animation: dropdownIn 0.18s ease-out;
   z-index: 20;
@@ -415,9 +286,9 @@ const handleLogout = async () => {
   font-weight: 600;
   text-align: left;
 }
-.dropdown-item:hover        { background: rgba(8, 145, 178, 0.07); color: var(--primary-solid); }
+.dropdown-item:hover        { background: rgba(0, 230, 118, 0.1); color: var(--primary-solid); }
 .dropdown-item.logout       { color: var(--accent-red); }
-.dropdown-item.logout:hover { background: rgba(220, 38, 38, 0.07); color: var(--accent-red); }
+.dropdown-item.logout:hover { background: rgba(248, 113, 113, 0.1); color: var(--accent-red); }
 
 /* ── Mobile hamburger ────────────────────────────────────────────────────── */
 .mobile-menu-toggle {
@@ -432,7 +303,7 @@ const handleLogout = async () => {
   transition: box-shadow var(--transition-base);
 }
 .mobile-menu-toggle:hover {
-  box-shadow: inset -2px -2px 5px rgba(255,255,255,0.8), inset 2px 2px 5px rgba(184,197,208,0.55);
+  background: rgba(255, 255, 255, 0.07);
 }
 .mobile-menu-toggle span {
   width: 22px;
@@ -458,10 +329,11 @@ const handleLogout = async () => {
     right: 12px;
     flex-direction: column;
     align-items: stretch;
-    background: rgba(232, 240, 245, 0.97);
+    background: rgba(16, 17, 24, 0.97);
     backdrop-filter: blur(14px);
     border-radius: 20px;
-    box-shadow: -6px -6px 14px rgba(255,255,255,0.85), 6px 6px 14px rgba(184,197,208,0.7);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
     padding: var(--spacing-md);
     gap: 4px;
     transform: translateY(-10px);
@@ -475,18 +347,7 @@ const handleLogout = async () => {
     pointer-events: all;
   }
 
-  .nav-link,
-  .nav-dropdown-trigger { width: 100%; justify-content: flex-start; }
-
-  .nav-item-dropdown { width: 100%; }
-  .nav-dropdown {
-    position: static;
-    box-shadow: inset -3px -3px 6px rgba(255,255,255,0.7), inset 3px 3px 6px rgba(184,197,208,0.5);
-    backdrop-filter: none;
-    margin-top: 4px;
-    animation: none;
-    border-radius: var(--radius-md);
-  }
+  .nav-link { width: 100%; justify-content: flex-start; }
 
   .mobile-menu-toggle { display: flex; }
   .user-name { display: none; }

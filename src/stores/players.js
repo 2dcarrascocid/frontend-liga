@@ -6,6 +6,7 @@ import {
   updatePlayer,
   listPlayersByClub,
   listPlayersByOrg,
+  listActivePlayersByOrg,
   createPlayerForClub,
   setPlayerStatus,
   changeClub,
@@ -18,9 +19,8 @@ const state = reactive({
   loading: false,
   error: null,
   meta: {
-    total: 0,
+    total_registros: 0,
     limit: 10,
-    page: 1,
     next_token: null
   },
   filters: {
@@ -35,28 +35,30 @@ export const usePlayersStore = () => {
   };
 
   const processResponse = (response) => {
-    // Backend retorna { success, data: { data: [...], next_token, total_registros, limit } }
-    const envelope = response.data;
-    const data = envelope?.data ?? envelope;
+    // Backend retorna { data: [...], next_token, total_registros, limit }, pero
+    // las rutas servidas por el orquestador ADF envuelven ese payload una vez más
+    // en { success, data: {...} }. Desenvolvemos ese nivel extra si está presente.
+    const raw = response.data;
+    const envelope = (raw && typeof raw === 'object' && 'success' in raw && raw.data) ? raw.data : raw;
 
-    if (Array.isArray(data)) {
-      state.items = data;
-      state.meta = { next_token: null, total_registros: data.length, limit: state.meta.limit };
-    } else if (data && Array.isArray(data.data)) {
-      state.items = data.data;
+    if (envelope && Array.isArray(envelope.data)) {
+      state.items = envelope.data;
       state.meta = {
-        next_token:      data.next_token      ?? null,
-        total_registros: data.total_registros ?? 0,
-        limit:           data.limit           ?? 10,
+        next_token:      envelope.next_token      ?? null,
+        total_registros: envelope.total_registros ?? envelope.data.length,
+        limit:           envelope.limit           ?? state.meta.limit,
       };
-    } else if (data && Array.isArray(data.items)) {
-      state.items = data.items;
-      state.meta = { next_token: data.next_token ?? null, total_registros: data.items.length, limit: state.meta.limit };
-    } else if (data && Array.isArray(data.players)) {
-      state.items = data.players;
-      state.meta = { next_token: null, total_registros: data.players.length, limit: state.meta.limit };
+    } else if (Array.isArray(envelope)) {
+      state.items = envelope;
+      state.meta = { next_token: null, total_registros: envelope.length, limit: state.meta.limit };
+    } else if (envelope && Array.isArray(envelope.items)) {
+      state.items = envelope.items;
+      state.meta = { next_token: envelope.next_token ?? null, total_registros: envelope.items.length, limit: state.meta.limit };
+    } else if (envelope && Array.isArray(envelope.players)) {
+      state.items = envelope.players;
+      state.meta = { next_token: null, total_registros: envelope.players.length, limit: state.meta.limit };
     } else {
-      console.warn('Unexpected players response format:', data);
+      console.warn('Unexpected players response format:', envelope);
       state.items = [];
     }
   };
@@ -93,10 +95,24 @@ export const usePlayersStore = () => {
       state.loading = true;
       state.error = null;
       try {
-          const response = await listPlayersByOrg(orgId, params);
+          const response = await listPlayersByOrg(orgId, { limit: state.meta.limit, ...params });
           processResponse(response);
       } catch (error) {
           setError(error.response?.data?.message || 'Error al cargar jugadores de la organización');
+          throw error;
+      } finally {
+          state.loading = false;
+      }
+  };
+
+  const fetchActivePlayersByOrg = async (orgId, params = {}) => {
+      state.loading = true;
+      state.error = null;
+      try {
+          const response = await listActivePlayersByOrg(orgId, { limit: state.meta.limit, ...params });
+          processResponse(response);
+      } catch (error) {
+          setError(error.response?.data?.message || 'Error al cargar jugadores activos de la organización');
           throw error;
       } finally {
           state.loading = false;
@@ -220,6 +236,7 @@ export const usePlayersStore = () => {
     fetchPlayers,
     fetchPlayersByClub,
     fetchPlayersByOrg,
+    fetchActivePlayersByOrg,
     fetchPlayerById,
     createOrUpdatePlayer,
     updatePlayerStatus,

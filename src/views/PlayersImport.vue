@@ -389,7 +389,7 @@ onMounted(async () => {
   border: none;
   transition: all var(--transition-base);
 }
-.btn-primary  { background: var(--primary-gradient); color: white; }
+.btn-primary  { background: var(--primary-gradient); color: var(--primary-ink); }
 .btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-secondary { background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); }

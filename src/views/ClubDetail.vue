@@ -1246,7 +1246,7 @@ onMounted(async () => {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0891B2, #22D3EE);
+  background: linear-gradient(135deg, #29b6f6, #4fc3f7);
   color: #fff;
   font-weight: 700;
   font-size: 1rem;
@@ -1260,9 +1260,9 @@ onMounted(async () => {
 .admin-email { font-weight: 500; font-size: 0.9rem; }
 
 .alert-success {
-  background: rgba(5, 150, 105, 0.1);
-  border: 1px solid rgba(5, 150, 105, 0.3);
-  color: #065F46;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
   border-radius: var(--radius-md);
   padding: 0.75rem 1rem;
   font-size: 0.875rem;

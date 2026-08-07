@@ -5,6 +5,7 @@ import AcceptInvite from '../views/AcceptInvite.vue';
 const Login          = () => import('../views/Login.vue');
 const ForgotPassword = () => import('../views/ForgotPassword.vue');
 const ResetPassword  = () => import('../views/ResetPassword.vue');
+const Landing = () => import('../views/Landing.vue');
 const Bootstrap = () => import('../views/Bootstrap.vue');
 const Home = () => import('../views/Home.vue');
 const ClubsList = () => import('../views/ClubsList.vue');
@@ -21,7 +22,9 @@ const PlayersImport    = () => import('../views/PlayersImport.vue');
 const routes = [
     {
         path: '/',
-        redirect: '/home',
+        name: 'Landing',
+        component: Landing,
+        meta: { requiresAuth: false, guestOnly: true },
     },
     {
         path: '/login',

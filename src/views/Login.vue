@@ -81,7 +81,7 @@
            @click="mockFacebookLogin" 
            :disabled="authStore.state.loading"
            class="btn btn-primary btn-full"
-           style="background: #1877F2;"
+           style="background: #1877F2; color: #fff;"
          >
            Continuar con Facebook
          </button>

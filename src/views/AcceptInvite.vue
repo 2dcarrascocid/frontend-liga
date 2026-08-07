@@ -53,7 +53,7 @@
       <template v-else-if="state === 'existing'">
         <div class="text-center">
           <div class="auth-icon-wrap" aria-hidden="true">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0891B2"
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#29b6f6"
                  stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
@@ -72,7 +72,7 @@
       <!-- Form: new user — set password -->
       <template v-else-if="state === 'form'">
         <div class="auth-icon-wrap" aria-hidden="true">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0891B2"
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#29b6f6"
                stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -276,7 +276,7 @@ const doAccept = async () => {
   width: 68px;
   height: 68px;
   border-radius: 20px;
-  background: rgba(8, 145, 178, 0.1);
+  background: rgba(41, 182, 246, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
