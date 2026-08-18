@@ -7,6 +7,7 @@ import {
   listPlayersByClub,
   listPlayersByOrg,
   listActivePlayersByOrg,
+  listInactivePlayersByOrg,
   createPlayerForClub,
   setPlayerStatus,
   changeClub,
@@ -113,6 +114,20 @@ export const usePlayersStore = () => {
           processResponse(response);
       } catch (error) {
           setError(error.response?.data?.message || 'Error al cargar jugadores activos de la organización');
+          throw error;
+      } finally {
+          state.loading = false;
+      }
+  };
+
+  const fetchInactivePlayersByOrg = async (orgId, params = {}) => {
+      state.loading = true;
+      state.error = null;
+      try {
+          const response = await listInactivePlayersByOrg(orgId, { limit: state.meta.limit, ...params });
+          processResponse(response);
+      } catch (error) {
+          setError(error.response?.data?.message || 'Error al cargar jugadores inactivos de la organización');
           throw error;
       } finally {
           state.loading = false;
@@ -237,6 +252,7 @@ export const usePlayersStore = () => {
     fetchPlayersByClub,
     fetchPlayersByOrg,
     fetchActivePlayersByOrg,
+    fetchInactivePlayersByOrg,
     fetchPlayerById,
     createOrUpdatePlayer,
     updatePlayerStatus,

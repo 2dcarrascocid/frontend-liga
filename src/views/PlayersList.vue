@@ -137,7 +137,7 @@ import { usePlayersStore } from '../stores/players';
 import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
-const { items, loading, error, meta, fetchActivePlayersByOrg } = usePlayersStore();
+const { items, loading, error, meta, fetchActivePlayersByOrg, fetchInactivePlayersByOrg } = usePlayersStore();
 const { state: authState } = useAuthStore();
 
 const icons = {
@@ -190,7 +190,7 @@ const tileSets = computed(() => ({
     { key: 'yellowCards', label: 'Tarjeta amarilla', value: 14, meta: 'amonestados', color: 'gold', trend: 6, icon: icons.card },
   ],
   inactivos: [
-    { key: 'totalInactive', label: 'Jugadores inactivos', value: 11, meta: 'total actual', color: 'red', trend: -3, icon: icons.userMinus },
+    { key: 'totalInactive', label: 'Jugadores inactivos', value: meta.value?.total_registros || 0, meta: 'total actual', color: 'red', trend: -3, icon: icons.userMinus },
     { key: 'expelled', label: 'Expulsados', value: 2, meta: 'tarjeta roja', color: 'red', trend: -8, icon: icons.card },
     { key: 'suspended', label: 'Suspendidos', value: 5, meta: 'por acumulación', color: 'gold', trend: 2, icon: icons.alert },
     { key: 'injured', label: 'Lesionados', value: 4, meta: 'baja médica', color: 'blue', trend: 1, icon: icons.alert },
@@ -215,7 +215,13 @@ const selectedTileLabel = computed(() => {
   return tile ? tile.label : '';
 });
 
-const isPlayersTable = computed(() => activeTab.value === 'jugadores' && selectedTileKey.value === 'total');
+// Tiles respaldados por datos reales del backend: tab + tile -> función de carga.
+const tableFetchers = {
+  jugadores: { total: fetchActivePlayersByOrg },
+  inactivos: { totalInactive: fetchInactivePlayersByOrg },
+};
+
+const isPlayersTable = computed(() => !!tableFetchers[activeTab.value]?.[selectedTileKey.value]);
 
 // Paginación por cursor: guardamos los next_token ya vistos para poder retroceder.
 const pageTokens = ref([null]);
@@ -223,8 +229,9 @@ const pageIndex = ref(0);
 
 const loadPlayers = async () => {
   const orgId = authState.org?.id;
-  if (!orgId) return;
-  await fetchActivePlayersByOrg(orgId, { next_token: pageTokens.value[pageIndex.value] || undefined });
+  const fetcher = tableFetchers[activeTab.value]?.[selectedTileKey.value];
+  if (!orgId || !fetcher) return;
+  await fetcher(orgId, { next_token: pageTokens.value[pageIndex.value] || undefined });
 };
 
 const goToPage = async (index) => {
@@ -247,7 +254,7 @@ const goPrev = () => {
 
 const selectTile = (key) => {
   selectedTileKey.value = key;
-  if (activeTab.value === 'jugadores' && key === 'total') {
+  if (tableFetchers[activeTab.value]?.[key]) {
     pageTokens.value = [null];
     pageIndex.value = 0;
     loadPlayers();

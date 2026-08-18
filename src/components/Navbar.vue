@@ -23,22 +23,100 @@
       <!-- Menu principal -->
       <div class="navbar-menu" :class="{ 'is-active': mobileMenuOpen }">
 
-        <!-- Home -->
-        <router-link to="/home" class="nav-link" @click="closeMobileMenu" aria-label="Ir a inicio">
-          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Home
-        </router-link>
+        <template v-if="authStore.isOrgAdmin()">
+          <!-- Home -->
+          <router-link to="/home" class="nav-link" @click="closeMobileMenu" aria-label="Ir a inicio">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+          </router-link>
 
-        <!-- Clubes -->
-        <router-link to="/clubs" class="nav-link" @click="closeMobileMenu" aria-label="Ir a clubes">
+          <!-- Clubes -->
+          <router-link to="/clubs" class="nav-link" @click="closeMobileMenu" aria-label="Ir a clubes">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            Clubes
+          </router-link>
+
+          <!-- Torneos -->
+          <router-link to="/tournaments" class="nav-link" @click="closeMobileMenu" aria-label="Ir a torneos">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H3a4 4 0 0 0 4 4"/><path d="M17 6h4a4 4 0 0 1-4 4"/></svg>
+            Torneos
+          </router-link>
+
+          <!-- Jugadores (con submenú de Transferencias) -->
+          <div class="nav-item" :class="{ 'is-open': playersMenuOpen }">
+            <button
+              type="button"
+              class="nav-link nav-link--dropdown"
+              :class="{ 'router-link-active': isPlayersRouteActive }"
+              @click.stop="togglePlayersMenu"
+              :aria-expanded="playersMenuOpen"
+              aria-haspopup="true"
+              aria-label="Abrir menú de jugadores"
+            >
+              <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Jugadores
+              <svg class="dropdown-arrow" :class="{ 'is-rotated': playersMenuOpen }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div class="nav-dropdown" v-if="playersMenuOpen" role="menu">
+              <router-link to="/players" class="nav-dropdown__item" @click="closeAllMenus" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                Lista de Jugadores
+              </router-link>
+              <router-link to="/transfers" class="nav-dropdown__item" @click="closeAllMenus" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><line x1="3" y1="5" x2="21" y2="5"/><polyline points="7 23 3 19 7 15"/><line x1="21" y1="19" x2="3" y2="19"/></svg>
+                Transferencias
+              </router-link>
+              <router-link to="/transfers/dashboard" class="nav-dropdown__item" @click="closeAllMenus" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                KPIs Transferencias
+              </router-link>
+            </div>
+          </div>
+
+          <!-- Parámetros (Árbitros, Canchas, Horarios) -->
+          <div class="nav-item" :class="{ 'is-open': paramsMenuOpen }">
+            <button
+              type="button"
+              class="nav-link nav-link--dropdown"
+              :class="{ 'router-link-active': isParamsRouteActive }"
+              @click.stop="toggleParamsMenu"
+              :aria-expanded="paramsMenuOpen"
+              aria-haspopup="true"
+              aria-label="Abrir menú de parámetros"
+            >
+              <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              Parámetros
+              <svg class="dropdown-arrow" :class="{ 'is-rotated': paramsMenuOpen }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div class="nav-dropdown" v-if="paramsMenuOpen" role="menu">
+              <router-link to="/referees" class="nav-dropdown__item" @click="closeAllMenus" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+                Árbitros
+              </router-link>
+              <router-link to="/venues" class="nav-dropdown__item" @click="closeAllMenus" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="3"/></svg>
+                Canchas
+              </router-link>
+              <router-link to="/schedules" class="nav-dropdown__item" @click="closeAllMenus" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Horarios
+              </router-link>
+            </div>
+          </div>
+        </template>
+
+        <!-- Administrador de club puro: solo ve su club -->
+        <router-link
+          v-else-if="myClub"
+          :to="`/clubs/${myClub.id}`"
+          class="nav-link"
+          @click="closeMobileMenu"
+          aria-label="Ir a mi club"
+        >
           <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          Clubes
-        </router-link>
-
-        <!-- Jugadores -->
-        <router-link to="/players" class="nav-link" @click="closeMobileMenu" aria-label="Ir a jugadores">
-          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Jugadores
+          {{ myClub.name }}
         </router-link>
 
       </div>
@@ -71,14 +149,27 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 
 const mobileMenuOpen = ref(false);
 const userMenuOpen   = ref(false);
+const paramsMenuOpen = ref(false);
+const playersMenuOpen = ref(false);
+
+const myClub = computed(() => authStore.myClub());
+
+const isParamsRouteActive = computed(() =>
+  route.path.startsWith('/referees') || route.path.startsWith('/venues') || route.path.startsWith('/schedules')
+);
+
+const isPlayersRouteActive = computed(() =>
+  route.path.startsWith('/players') || route.path.startsWith('/transfers')
+);
 
 const userName = computed(() =>
   authStore.user?.value?.nombre || authStore.state?.user?.email || 'Usuario'
@@ -90,13 +181,18 @@ const userInitials = computed(() => {
 });
 
 const toggleMobileMenu = () => { mobileMenuOpen.value = !mobileMenuOpen.value; };
-const closeMobileMenu  = () => { mobileMenuOpen.value = false; };
+const closeMobileMenu  = () => { mobileMenuOpen.value = false; paramsMenuOpen.value = false; playersMenuOpen.value = false; };
 const toggleUserMenu   = () => { userMenuOpen.value = !userMenuOpen.value; };
+const toggleParamsMenu = () => { paramsMenuOpen.value = !paramsMenuOpen.value; playersMenuOpen.value = false; };
+const togglePlayersMenu = () => { playersMenuOpen.value = !playersMenuOpen.value; paramsMenuOpen.value = false; };
+const closeAllMenus    = () => { paramsMenuOpen.value = false; playersMenuOpen.value = false; closeMobileMenu(); };
 
-// Cierra el menú de usuario al hacer click fuera del navbar
+// Cierra los menús desplegables al hacer click fuera del navbar
 function onClickOutside(e) {
   if (!e.target.closest('.navbar')) {
     userMenuOpen.value = false;
+    paramsMenuOpen.value = false;
+    playersMenuOpen.value = false;
   }
 }
 onMounted(()  => document.addEventListener('click', onClickOutside));
@@ -197,6 +293,57 @@ const handleLogout = async () => {
 }
 
 .nav-icon { flex-shrink: 0; }
+
+/* ── Nav item con submenú (Parámetros) ──────────────────────────────────── */
+.nav-item {
+  position: relative;
+}
+
+.nav-link--dropdown .dropdown-arrow {
+  margin-left: 2px;
+}
+
+.nav-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 180px;
+  background: rgba(16, 17, 24, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  padding: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: dropdownIn 0.18s ease-out;
+  z-index: 20;
+}
+
+.nav-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.6rem 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 12px;
+  font-family: 'Raleway', sans-serif;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+.nav-dropdown__item:hover {
+  color: var(--primary-solid);
+  background: rgba(0, 230, 118, 0.1);
+}
+.nav-dropdown__item.router-link-active {
+  color: var(--primary-solid);
+  background: rgba(0, 230, 118, 0.14);
+}
 
 @keyframes dropdownIn {
   from { opacity: 0; transform: translateY(-8px); }
@@ -348,6 +495,15 @@ const handleLogout = async () => {
   }
 
   .nav-link { width: 100%; justify-content: flex-start; }
+
+  .nav-item { width: 100%; }
+  .nav-dropdown {
+    position: static;
+    margin-top: 4px;
+    box-shadow: none;
+    border-color: transparent;
+    background: rgba(255, 255, 255, 0.04);
+  }
 
   .mobile-menu-toggle { display: flex; }
   .user-name { display: none; }

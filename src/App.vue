@@ -8,6 +8,7 @@
         </transition>
       </router-view>
     </main>
+    <NotifyModal />
   </div>
 </template>
 
@@ -15,6 +16,7 @@
 import { computed } from 'vue';
 import { useAuthStore } from './stores/auth';
 import Navbar from './components/Navbar.vue';
+import NotifyModal from './components/NotifyModal.vue';
 
 const authStore = useAuthStore();
 const isAuthenticated = computed(() => authStore.isAuthenticated.value);

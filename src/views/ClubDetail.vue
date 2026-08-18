@@ -38,7 +38,7 @@
         :key="tab.key"
         class="club-tab"
         :class="{ 'club-tab-active': activeTab === tab.key }"
-        @click="switchTab(tab.key)"
+        @click="tab.path ? $router.push(tab.path) : switchTab(tab.key)"
       >
         {{ tab.label }}
       </button>
@@ -621,6 +621,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useClubsStore } from '../stores/clubs';
 import { usePlayersStore } from '../stores/players';
 import { useAuthStore } from '../stores/auth';
+import { useNotifyStore } from '../stores/notify';
 import { uploadImage } from '../services/cloudinary.service';
 import * as categoriesService from '../services/categories.service.js';
 import * as transfersService  from '../services/transfers.service.js';
@@ -630,11 +631,13 @@ const router = useRouter();
 const { current, users, admins, loading, error, fetchClubById, addUserToClub, removeUserFromClub, createOrUpdateClub, fetchClubAdmins, inviteAdmin, removeAdmin } = useClubsStore();
 const playersStore = usePlayersStore();
 const authStore    = useAuthStore();
+const { notifyError } = useNotifyStore();
 
 // ── Tabs ──────────────────────────────────────────────
 const tabs = [
   { key: 'players',          label: 'Jugadores' },
   { key: 'inactive_players', label: 'Jugadores Inactivos' },
+  { key: 'series',           label: 'Series', path: `/clubs/${route.params.clubId}/series` },
   { key: 'transfers',        label: 'Traspasos' },
   { key: 'categories',       label: 'Categorías' },
   { key: 'admins',           label: 'Administradores' },
@@ -688,7 +691,7 @@ const handleEditFileChange = async (event) => {
     const data = await uploadImage(file);
     editForm.logo_url = data.secure_url;
   } catch (e) {
-    alert('Error al subir imagen: ' + e.message);
+    notifyError('Error al subir imagen: ' + e.message);
   } finally {
     editUploading.value = false;
     event.target.value = '';

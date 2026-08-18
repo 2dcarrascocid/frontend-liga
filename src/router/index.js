@@ -18,6 +18,18 @@ const PlayerCreate = () => import('../views/PlayerCreate.vue');
 const PlayerEdit = () => import('../views/PlayerEdit.vue');
 const PlayerChangeClub = () => import('../views/PlayerChangeClub.vue');
 const PlayersImport    = () => import('../views/PlayersImport.vue');
+const ClubSeries = () => import('../views/ClubSeries.vue');
+const RefereesList = () => import('../views/RefereesList.vue');
+const VenuesList = () => import('../views/VenuesList.vue');
+const SchedulesList = () => import('../views/SchedulesList.vue');
+const TransfersView = () => import('../views/TransfersView.vue');
+const TransfersKpiDashboard = () => import('../views/TransfersKpiDashboard.vue');
+const TournamentsList = () => import('../views/TournamentsList.vue');
+const TournamentDetail = () => import('../views/TournamentDetail.vue');
+const TournamentFixture = () => import('../views/TournamentFixture.vue');
+const TournamentStandings = () => import('../views/TournamentStandings.vue');
+const TournamentCosts = () => import('../views/TournamentCosts.vue');
+const MatchControlSheet = () => import('../views/MatchControlSheet.vue');
 
 const routes = [
     {
@@ -66,7 +78,7 @@ const routes = [
         path: '/clubs',
         name: 'ClubsList',
         component: ClubsList,
-        meta: { requiresAuth: true, requiresOrg: true },
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
     },
     {
         path: '/clubs/:clubId',
@@ -87,6 +99,12 @@ const routes = [
         meta: { requiresAuth: true, requiresOrg: true },
     },
     {
+        path: '/clubs/:clubId/series',
+        name: 'ClubSeries',
+        component: ClubSeries,
+        meta: { requiresAuth: true, requiresOrg: true },
+    },
+    {
         path: '/clubs/:clubId/players/new',
         name: 'PlayerCreate',
         component: PlayerCreate,
@@ -102,7 +120,7 @@ const routes = [
         path: '/players',
         name: 'PlayersList',
         component: PlayersList,
-        meta: { requiresAuth: true, requiresOrg: true },
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
     },
     {
         path: '/players/:playerId',
@@ -122,6 +140,73 @@ const routes = [
         component: PlayerChangeClub,
         meta: { requiresAuth: true, requiresOrg: true },
     },
+    {
+        path: '/referees',
+        name: 'RefereesList',
+        component: RefereesList,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/venues',
+        name: 'VenuesList',
+        component: VenuesList,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/schedules',
+        name: 'SchedulesList',
+        component: SchedulesList,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/transfers',
+        name: 'TransfersView',
+        component: TransfersView,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/transfers/dashboard',
+        name: 'TransfersKpiDashboard',
+        component: TransfersKpiDashboard,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/tournaments',
+        name: 'TournamentsList',
+        component: TournamentsList,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/tournaments/:tournamentId',
+        name: 'TournamentDetail',
+        component: TournamentDetail,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/tournaments/:tournamentId/fixture',
+        alias: ['/tournaments/:tournamentId/matchdays', '/tournaments/:tournamentId/matches'],
+        name: 'TournamentFixture',
+        component: TournamentFixture,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/tournaments/:tournamentId/standings',
+        name: 'TournamentStandings',
+        component: TournamentStandings,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/tournaments/:tournamentId/costs',
+        name: 'TournamentCosts',
+        component: TournamentCosts,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/matches/:matchId',
+        name: 'MatchControlSheet',
+        component: MatchControlSheet,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
     // Catch-all
     {
         path: '/:pathMatch(.*)*',
@@ -138,7 +223,11 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     const authStore = useAuthStore();
     const isAuthenticated = authStore.state.isAuthenticated;
-    const hasOrg = !!authStore.state.org;
+    const club = authStore.myClub();
+    // Un ADMIN_CLUB puro (invitado directo a un club, sin membresía de
+    // organización propia) también "tiene contexto" vía su club — no debe
+    // ir a /bootstrap a crear una organización nueva.
+    const hasOrg = !!authStore.state.org || !!club;
 
     // 1. If route requires auth and user is not authenticated -> Login
     if (to.meta.requiresAuth && !isAuthenticated) {
@@ -159,6 +248,18 @@ router.beforeEach((to, from, next) => {
     // 4. If route requires NO Org (Bootstrap) but user has one -> Home
     if (to.meta.requiresNoOrg && hasOrg) {
         return next('/home');
+    }
+
+    // 5. Administrador de club puro (no ADMIN de organización): su alcance
+    // es únicamente su propio club — nada de rutas a nivel de organización,
+    // y "Home" no tiene sentido para él, va directo a su club.
+    if (isAuthenticated && club && !authStore.isOrgAdmin()) {
+        if (to.meta.orgAdminOnly) {
+            return next(`/clubs/${club.id}`);
+        }
+        if (to.name === 'Home') {
+            return next(`/clubs/${club.id}`);
+        }
     }
 
     next();

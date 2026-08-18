@@ -292,11 +292,13 @@ import { onMounted, reactive, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useClubsStore } from '../stores/clubs';
 import { useAuthStore } from '../stores/auth';
+import { useNotifyStore } from '../stores/notify';
 import { uploadImage } from '../services/cloudinary.service';
 
 const router = useRouter();
 const { items, loading, error, fetchClubs, createOrUpdateClub } = useClubsStore();
 const authStore = useAuthStore();
+const { notifyError } = useNotifyStore();
 
 const viewMode = ref('list');
 const uploading = ref(false);
@@ -431,7 +433,7 @@ const handleFileChange = async (event) => {
     const data = await uploadImage(file);
     form.logo_url = data.secure_url;
   } catch (e) {
-    alert('Error al subir imagen: ' + e.message);
+    notifyError('Error al subir imagen: ' + e.message);
   } finally {
     uploading.value = false;
     // Clear input

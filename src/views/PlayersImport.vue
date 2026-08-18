@@ -195,11 +195,13 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useNotifyStore } from '../stores/notify';
 import { parseExcelFile, importPlayers } from '../services/import.service.js';
 import { getClubById } from '../services/clubs.service.js';
 
 const route     = useRoute();
 const authStore = useAuthStore();
+const { notifyError } = useNotifyStore();
 
 const clubId = computed(() => route.params.clubId);
 const orgId  = computed(() => authStore.state.org?.id);
@@ -251,7 +253,7 @@ async function processFile(file) {
 
 async function startImport() {
   if (!orgId.value) {
-    alert('No se encontró el ID de la organización. Recarga la página.');
+    notifyError('No se encontró el ID de la organización. Recarga la página.');
     return;
   }
   phase.value = 'importing';
