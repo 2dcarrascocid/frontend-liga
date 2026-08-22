@@ -7,6 +7,9 @@ export const listPlayersByOrg = (orgId, params) => apiClient.get(`/orgs/${orgId}
 export const listActivePlayersByOrg = (orgId, params) => apiClient.get(`/orgs/${orgId}/players/active`, { params });
 export const listInactivePlayersByOrg = (orgId, params) => apiClient.get(`/orgs/${orgId}/players/inactive`, { params });
 
+// Folios disponibles
+export const getAvailableFolios = (clubId) => apiClient.get(`/clubs/${clubId}/available-folios`);
+
 // Detalle
 export const getPlayerById = (playerId) => apiClient.get(`/players/${playerId}`);
 

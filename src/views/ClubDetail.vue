@@ -12,6 +12,8 @@
       {{ error }}
     </div>
 
+    <LoadingState :loading="pageLoading" message="Cargando club...">
+
     <!-- Club Info Card (always visible) -->
     <div v-if="current" class="card club-card-detail mb-md">
       <div class="club-card-header">
@@ -28,6 +30,57 @@
             Activos: {{ activeCount }} / 70
           </span>
         </div>
+      </div>
+    </div>
+
+    <!-- KPIs Dashboard -->
+    <div class="kpi-grid mb-md">
+      <div class="card kpi-card">
+        <span class="kpi-label">Jugadores inscritos</span>
+        <span class="kpi-value">{{ kpisLoading ? '—' : (kpis?.registered_players ?? 0) }}</span>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-label">Folios disponibles</span>
+        <span class="kpi-value">{{ kpisLoading ? '—' : (kpis?.available_folios ?? 0) }}</span>
+        <span v-if="kpis" class="kpi-sub">de {{ kpis.total_folios }}</span>
+      </div>
+      <div class="card kpi-card kpi-card-split">
+        <span class="kpi-label">Tarjetas</span>
+        <div class="kpi-split-row">
+          <div class="kpi-split-item">
+            <span class="kpi-value kpi-value-sm kpi-danger">{{ kpisLoading ? '—' : (kpis?.expelled_players ?? 0) }}</span>
+            <span class="kpi-split-label">Expulsados</span>
+          </div>
+          <div class="kpi-split-item">
+            <span class="kpi-value kpi-value-sm kpi-warning">{{ kpisLoading ? '—' : (kpis?.yellow_card_players ?? 0) }}</span>
+            <span class="kpi-split-label">Amarillas</span>
+          </div>
+        </div>
+      </div>
+      <div class="card kpi-card kpi-card-split">
+        <span class="kpi-label">Traspasos</span>
+        <div class="kpi-split-row">
+          <div class="kpi-split-item">
+            <span class="kpi-value kpi-value-sm">{{ kpisLoading ? '—' : (kpis?.transferred_players ?? 0) }}</span>
+            <span class="kpi-split-label">Transferidos</span>
+          </div>
+          <div class="kpi-split-item">
+            <span class="kpi-value kpi-value-sm">{{ kpisLoading ? '—' : (kpis?.pending_transfers ?? 0) }}</span>
+            <span class="kpi-split-label">Pendientes</span>
+          </div>
+        </div>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-label">Series activas {{ currentYear }}</span>
+        <span class="kpi-value">{{ kpisLoading ? '—' : (kpis?.active_series_this_year ?? 0) }}</span>
+      </div>
+      <div class="card kpi-card">
+        <span class="kpi-label">Estado de pago</span>
+        <span v-if="paymentStatusLoading" class="kpi-value">—</span>
+        <span v-else class="badge" :class="PAY_STATUS_BADGE_CLASS[paymentStatus?.status] || 'badge-secondary'">
+          {{ PAY_STATUS_LABELS[paymentStatus?.status] || 'Sin datos' }}
+        </span>
+        <span v-if="paymentStatus?.total_pending > 0" class="kpi-sub">${{ Math.round(paymentStatus.total_pending).toLocaleString('es-CL') }} pendiente</span>
       </div>
     </div>
 
@@ -110,7 +163,7 @@
               </thead>
               <tbody>
                 <tr v-for="item in filteredPlayers" :key="item.id">
-                  <td>{{ item.club_folio || '—' }}</td>
+                  <td>{{ formatFolio({ clubFolio: item.club_folio, clubFolioDisplay: item.club_folio_display, birthDate: item.player?.birth_date }) ?? '—' }}</td>
                   <td>
                     <div class="avatar-small">
                       <img :src="item.player?.photo_url || '/placeholder-player.svg'" alt="Foto" class="avatar-img" />
@@ -205,7 +258,7 @@
               </thead>
               <tbody>
                 <tr v-for="item in inactivePlayers" :key="item.id">
-                  <td>{{ item.club_folio || '—' }}</td>
+                  <td>{{ formatFolio({ clubFolio: item.club_folio, clubFolioDisplay: item.club_folio_display, birthDate: item.player?.birth_date }) ?? '—' }}</td>
                   <td>
                     <div class="avatar-small">
                       <img :src="item.player?.photo_url || '/placeholder-player.svg'" alt="Foto" class="avatar-img" />
@@ -371,7 +424,7 @@
               <select v-model="trForm.player_id" class="input">
                 <option :value="null">Seleccionar jugador...</option>
                 <option v-for="item in filteredPlayers" :key="item.player_id" :value="item.player_id">
-                  {{ item.player?.first_name }} {{ item.player?.last_name }} — Folio {{ item.club_folio || '—' }}
+                  {{ item.player?.first_name }} {{ item.player?.last_name }} — Folio {{ formatFolio({ clubFolio: item.club_folio, clubFolioDisplay: item.club_folio_display, birthDate: item.player?.birth_date }) ?? '—' }}
                 </option>
               </select>
             </div>
@@ -612,6 +665,8 @@
         </div>
       </div>
     </div>
+
+    </LoadingState>
   </div>
 </template>
 
@@ -625,6 +680,10 @@ import { useNotifyStore } from '../stores/notify';
 import { uploadImage } from '../services/cloudinary.service';
 import * as categoriesService from '../services/categories.service.js';
 import * as transfersService  from '../services/transfers.service.js';
+import { formatFolio } from '../utils/folio.js';
+import { getClubKpis } from '../services/clubs.service.js';
+import { getClubPaymentStatus } from '../services/clubFinance.service.js';
+import LoadingState from '../components/LoadingState.vue';
 
 const route  = useRoute();
 const router = useRouter();
@@ -644,6 +703,44 @@ const tabs = [
   { key: 'edit',             label: 'Editar Club' },
 ];
 const activeTab = ref('players');
+const pageLoading = ref(true);
+
+// ── KPIs dashboard ────────────────────────────────────
+const kpis        = ref(null);
+const kpisLoading  = ref(false);
+const currentYear  = new Date().getFullYear();
+
+const loadKpis = async () => {
+  kpisLoading.value = true;
+  try {
+    const res = await getClubKpis(route.params.clubId);
+    kpis.value = res.data?.data?.kpis ?? res.data?.kpis ?? null;
+  } catch (e) {
+    console.error('[ClubDetail] getClubKpis error:', e);
+    kpis.value = null;
+  } finally {
+    kpisLoading.value = false;
+  }
+};
+
+const PAY_STATUS_LABELS = { AL_DIA: 'Al día', PENDIENTE: 'Pendiente', MOROSO: 'Moroso' };
+const PAY_STATUS_BADGE_CLASS = { AL_DIA: 'badge-success', PENDIENTE: 'badge-secondary', MOROSO: 'badge-danger' };
+
+const paymentStatus        = ref(null);
+const paymentStatusLoading = ref(false);
+
+const loadPaymentStatus = async () => {
+  paymentStatusLoading.value = true;
+  try {
+    const res = await getClubPaymentStatus(route.params.clubId);
+    paymentStatus.value = res.data?.data?.status ?? res.data?.status ?? null;
+  } catch (e) {
+    console.error('[ClubDetail] getClubPaymentStatus error:', e);
+    paymentStatus.value = null;
+  } finally {
+    paymentStatusLoading.value = false;
+  }
+};
 
 // ── Club edit ─────────────────────────────────────────
 const userEmail    = ref('');
@@ -1075,15 +1172,77 @@ const formatDate = (val) => {
 const goBack = () => router.push('/clubs');
 
 onMounted(async () => {
-  await fetchClubById(route.params.clubId);
-  syncEditForm();
-  await Promise.all([fetchPlayers(), fetchCategories()]);
-  fetchTransfers();
-  fetchAllClubs();
+  pageLoading.value = true;
+  try {
+    await Promise.allSettled([
+      fetchClubById(route.params.clubId).then(syncEditForm),
+      fetchPlayers(),
+      fetchCategories(),
+      fetchTransfers(),
+      fetchAllClubs(),
+      loadKpis(),
+      loadPaymentStatus(),
+    ]);
+  } finally {
+    pageLoading.value = false;
+  }
 });
 </script>
 
 <style scoped>
+/* ── KPIs dashboard ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+}
+.kpi-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.kpi-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.kpi-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.kpi-card-split {
+  justify-content: space-between;
+}
+.kpi-split-row {
+  display: flex;
+  gap: 20px;
+}
+.kpi-split-item {
+  display: flex;
+  flex-direction: column;
+}
+.kpi-value-sm {
+  font-size: 1.35rem;
+}
+.kpi-split-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.kpi-danger {
+  color: var(--color-danger, #ef4444);
+}
+.kpi-warning {
+  color: #eab308;
+}
+
 /* ── Folio config ── */
 .section-divider {
   font-size: 0.75rem;

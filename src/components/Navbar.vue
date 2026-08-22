@@ -36,10 +36,22 @@
             Clubes
           </router-link>
 
-          <!-- Torneos -->
-          <router-link to="/tournaments" class="nav-link" @click="closeMobileMenu" aria-label="Ir a torneos">
+          <!-- Temporadas (torneos viven dentro de una temporada) -->
+          <router-link
+            to="/seasons"
+            class="nav-link"
+            :class="{ 'router-link-active': isSeasonsRouteActive }"
+            @click="closeMobileMenu"
+            aria-label="Ir a temporadas"
+          >
             <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H3a4 4 0 0 0 4 4"/><path d="M17 6h4a4 4 0 0 1-4 4"/></svg>
-            Torneos
+            Temporadas
+          </router-link>
+
+          <!-- Finanzas (mantenedor de costos + libro de ingresos/egresos) -->
+          <router-link to="/ledger" class="nav-link" @click="closeMobileMenu" aria-label="Ir a finanzas">
+            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Finanzas
           </router-link>
 
           <!-- Jugadores (con submenú de Transferencias) -->
@@ -165,6 +177,10 @@ const myClub = computed(() => authStore.myClub());
 
 const isParamsRouteActive = computed(() =>
   route.path.startsWith('/referees') || route.path.startsWith('/venues') || route.path.startsWith('/schedules')
+);
+
+const isSeasonsRouteActive = computed(() =>
+  route.path.startsWith('/seasons') || route.path.startsWith('/tournaments') || route.path.startsWith('/matches')
 );
 
 const isPlayersRouteActive = computed(() =>

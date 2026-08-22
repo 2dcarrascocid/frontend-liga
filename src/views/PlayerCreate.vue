@@ -48,19 +48,17 @@
           <div class="input-group">
             <label class="label">
               Folio
-              <span v-if="club" class="label-hint">
-                Rango {{ club.folio_start ?? 1 }} – {{ club.folio_end ?? 70 }}
-                (dejar vacío para auto-asignar)
+              <span class="label-hint">
+                {{ loadingFolios ? 'Cargando disponibles...' : `${availableFolios.length} disponibles` }}
               </span>
             </label>
-            <input
-              v-model.number="form.club_folio"
-              type="number"
-              class="input"
-              :min="club?.folio_start ?? 1"
-              :max="club?.folio_end ?? 70"
-              placeholder="Auto"
-            />
+            <select v-model.number="form.club_folio" class="input" :disabled="loadingFolios">
+              <option :value="null">Auto-asignar (siguiente disponible)</option>
+              <option v-for="f in availableFolios" :key="f" :value="f">{{ f }}</option>
+            </select>
+            <p v-if="!loadingFolios && availableFolios.length === 0" class="input-error">
+              No hay folios disponibles en el rango configurado.
+            </p>
             <p v-if="folioError" class="input-error">{{ folioError }}</p>
           </div>
 
@@ -100,6 +98,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePlayersStore } from '../stores/players';
 import { getClubById } from '../services/clubs.service.js';
+import { getAvailableFolios } from '../services/players.service.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -109,8 +108,10 @@ const clubId = route.params.clubId;
 // Refs directas del store (ya son refs, no envolver en computed)
 const { loading, error } = playersStore;
 
-const club       = ref(null);
-const folioError = ref(null);
+const club           = ref(null);
+const folioError     = ref(null);
+const availableFolios = ref([]);
+const loadingFolios   = ref(false);
 
 const form = ref({
     first_name: '',
@@ -135,13 +136,25 @@ const validateFolio = () => {
     folioError.value = null;
     const f = form.value.club_folio;
     if (f === null || f === '' || f === undefined) return true;
-    const start = club.value?.folio_start ?? 1;
-    const end   = club.value?.folio_end   ?? 70;
-    if (f < start || f > end) {
-        folioError.value = `El folio debe estar entre ${start} y ${end}`;
+    if (!availableFolios.value.includes(f)) {
+        folioError.value = `El folio ${f} ya no está disponible, elige otro`;
         return false;
     }
     return true;
+};
+
+const loadAvailableFolios = async () => {
+    loadingFolios.value = true;
+    try {
+        const res = await getAvailableFolios(clubId);
+        const data = res.data?.data ?? res.data ?? {};
+        availableFolios.value = data.available ?? [];
+    } catch (e) {
+        console.error('[PlayerCreate] getAvailableFolios error:', e);
+        availableFolios.value = [];
+    } finally {
+        loadingFolios.value = false;
+    }
 };
 
 const savePlayer = async () => {
@@ -177,6 +190,7 @@ onMounted(async () => {
     } catch (e) {
         console.error('[PlayerCreate] getClubById error:', e);
     }
+    await loadAvailableFolios();
 });
 </script>
 

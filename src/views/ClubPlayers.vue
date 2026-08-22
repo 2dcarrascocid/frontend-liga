@@ -103,7 +103,7 @@
           </thead>
           <tbody>
             <tr v-for="item in filteredItems" :key="item.id">
-              <td>{{ item.club_folio }}</td>
+              <td>{{ formatFolio({ clubFolio: item.club_folio, clubFolioDisplay: item.club_folio_display, birthDate: item.player?.birth_date }) ?? '—' }}</td>
               <td>
                 <div class="avatar-small">
                   <img :src="item.player?.photo_url || '/placeholder-player.svg'" alt="Foto" class="avatar-img" />
@@ -207,6 +207,7 @@ import { useRoute } from 'vue-router';
 import { usePlayersStore } from '../stores/players';
 import { useClubsStore } from '../stores/clubs';
 import { listCategories } from '../services/categories.service.js';
+import { formatFolio } from '../utils/folio.js';
 
 const route = useRoute();
 const playersStore = usePlayersStore();

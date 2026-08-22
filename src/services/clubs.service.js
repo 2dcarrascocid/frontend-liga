@@ -6,6 +6,8 @@ export const createClub = (data) => apiClient.post('/clubs', data);
 
 export const getClubById = (clubId) => apiClient.get(`/clubs/${clubId}`);
 
+export const getClubKpis = (clubId) => apiClient.get(`/clubs/${clubId}/kpis`);
+
 export const updateClub = (clubId, data) => apiClient.patch(`/clubs/${clubId}`, data);
 
 export const addClubUser = (clubId, data) => apiClient.post(`/clubs/${clubId}/users`, data);

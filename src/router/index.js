@@ -24,10 +24,14 @@ const VenuesList = () => import('../views/VenuesList.vue');
 const SchedulesList = () => import('../views/SchedulesList.vue');
 const TransfersView = () => import('../views/TransfersView.vue');
 const TransfersKpiDashboard = () => import('../views/TransfersKpiDashboard.vue');
+const SeasonsList = () => import('../views/SeasonsList.vue');
+const LedgerView = () => import('../views/LedgerView.vue');
 const TournamentsList = () => import('../views/TournamentsList.vue');
 const TournamentDetail = () => import('../views/TournamentDetail.vue');
 const TournamentFixture = () => import('../views/TournamentFixture.vue');
 const TournamentStandings = () => import('../views/TournamentStandings.vue');
+const TournamentTopScorers = () => import('../views/TournamentTopScorers.vue');
+const TournamentFairplay = () => import('../views/TournamentFairplay.vue');
 const TournamentCosts = () => import('../views/TournamentCosts.vue');
 const MatchControlSheet = () => import('../views/MatchControlSheet.vue');
 
@@ -171,6 +175,24 @@ const routes = [
         meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
     },
     {
+        path: '/seasons',
+        name: 'SeasonsList',
+        component: SeasonsList,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/ledger',
+        name: 'LedgerView',
+        component: LedgerView,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/seasons/:seasonId/tournaments',
+        name: 'SeasonTournaments',
+        component: TournamentsList,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
         path: '/tournaments',
         name: 'TournamentsList',
         component: TournamentsList,
@@ -193,6 +215,18 @@ const routes = [
         path: '/tournaments/:tournamentId/standings',
         name: 'TournamentStandings',
         component: TournamentStandings,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/tournaments/:tournamentId/top-scorers',
+        name: 'TournamentTopScorers',
+        component: TournamentTopScorers,
+        meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
+    },
+    {
+        path: '/tournaments/:tournamentId/fairplay',
+        name: 'TournamentFairplay',
+        component: TournamentFairplay,
         meta: { requiresAuth: true, requiresOrg: true, orgAdminOnly: true },
     },
     {

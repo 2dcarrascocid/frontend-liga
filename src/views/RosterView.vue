@@ -58,7 +58,7 @@
         >
           <div class="roster-info">
             <div class="roster-main">
-              <span class="folio">#{{ entry.folio || entry.id }}</span>
+              <span class="folio">#{{ formatFolio({ clubFolio: entry.club_folio, clubFolioDisplay: entry.club_folio_display, birthDate: entry.player?.birth_date }) ?? entry.id }}</span>
               <span class="name">{{ entry.player_name }}</span>
             </div>
             <div class="roster-meta">
@@ -84,6 +84,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useRosterStore } from '../stores/roster';
+import { formatFolio } from '../utils/folio.js';
 
 const route = useRoute();
 const router = useRouter();

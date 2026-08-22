@@ -11,15 +11,17 @@
       <div class="flex justify-between items-center flex-wrap gap-md">
         <div>
           <span class="status-badge" :class="`status-badge--${current.status?.toLowerCase()}`">{{ statusLabel(current.status) }}</span>
+          <span class="type-badge" :class="`type-badge--${current.type?.toLowerCase()}`">{{ typeLabel(current.type) }}</span>
           <p class="text-muted text-sm mt-sm mb-0">
-            {{ formatLabel(current.format) }} · {{ current.season || 'Sin temporada' }} ·
+            {{ formatLabel(current.format) }} · {{ current.season?.name || 'Sin temporada' }} ·
             {{ current.teams_count }} equipo(s) inscrito(s)
           </p>
         </div>
         <div class="flex gap-sm flex-wrap">
           <button class="btn btn-sm btn-secondary" @click="$router.push(`/tournaments/${tournamentId}/fixture`)">Ver Fixture</button>
           <button class="btn btn-sm btn-secondary" @click="$router.push(`/tournaments/${tournamentId}/standings`)">Tabla de Posiciones</button>
-          <button class="btn btn-sm btn-secondary" @click="$router.push(`/tournaments/${tournamentId}/costs`)">Costos</button>
+          <button class="btn btn-sm btn-secondary" @click="$router.push(`/tournaments/${tournamentId}/top-scorers`)">Goleadores</button>
+          <button class="btn btn-sm btn-secondary" @click="$router.push(`/tournaments/${tournamentId}/fairplay`)">Fairplay</button>
         </div>
       </div>
     </div>
@@ -157,10 +159,14 @@ const STATUS_LABELS = {
 const TEAM_STATUS_LABELS = {
   ACTIVE: 'Activo', ELIMINATED: 'Eliminado', WITHDRAWN: 'Retirado', CHAMPION: 'Campeón',
 };
+const TYPE_LABELS = {
+  OFICIAL: 'Oficial', AMISTOSO: 'Amistoso',
+};
 
 const formatLabel = (v) => FORMAT_LABELS[v] || v;
 const statusLabel = (v) => STATUS_LABELS[v] || v;
 const teamStatusLabel = (v) => TEAM_STATUS_LABELS[v] || v;
+const typeLabel = (v) => TYPE_LABELS[v] || v;
 
 const teamForm = reactive({ series_id: '', group_name: '', seed: null });
 
@@ -290,4 +296,12 @@ onMounted(() => {
 .status-badge--team-eliminated { background: rgba(239, 83, 80, 0.14); color: #ef5350; }
 .status-badge--team-withdrawn  { background: rgba(255, 255, 255, 0.08); color: var(--text-muted); }
 .status-badge--team-champion   { background: rgba(255, 213, 79, 0.16); color: #ffd54f; }
+
+.type-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.2rem 0.6rem; border-radius: var(--radius-full);
+  font-size: 0.75rem; font-weight: 700; margin-left: 8px;
+}
+.type-badge--oficial  { background: rgba(0, 230, 118, 0.14); color: var(--primary-solid, #00e676); }
+.type-badge--amistoso { background: rgba(79, 195, 247, 0.16); color: #4fc3f7; }
 </style>

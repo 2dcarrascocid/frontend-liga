@@ -98,7 +98,7 @@
                   </div>
                 </td>
                 <td>{{ player.first_name }} {{ player.last_name }}</td>
-                <td>{{ player.club_folio ?? '—' }}</td>
+                <td>{{ formatFolio({ clubFolio: player.club_folio, clubFolioDisplay: player.club_folio_display, birthDate: player.birth_date }) ?? '—' }}</td>
                 <td>{{ player.club_name || 'Sin club' }}</td>
                 <td>
                   <span class="badge" :class="statusClass(player.status)">
@@ -135,6 +135,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { usePlayersStore } from '../stores/players';
 import { useAuthStore } from '../stores/auth';
+import { formatFolio } from '../utils/folio.js';
 
 const router = useRouter();
 const { items, loading, error, meta, fetchActivePlayersByOrg, fetchInactivePlayersByOrg } = usePlayersStore();

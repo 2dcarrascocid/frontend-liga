@@ -42,7 +42,7 @@
           <div class="w-full border-t border-border pt-md">
             <div class="info-row">
               <span class="info-label">Folio</span>
-              <span class="info-value">{{ player.active_roster?.club_folio || '—' }}</span>
+              <span class="info-value">{{ folioDisplay ?? '—' }}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Estado</span>
@@ -110,7 +110,7 @@
             </div>
             <div class="info-item">
               <span class="info-label">Folio en club</span>
-              <span class="info-value font-bold">{{ player.active_roster?.club_folio || '—' }}</span>
+              <span class="info-value font-bold">{{ folioDisplay ?? '—' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Posición</span>
@@ -138,6 +138,7 @@ import { usePlayersStore } from '../stores/players';
 import { listCategories } from '../services/categories.service.js';
 import { getClubById } from '../services/clubs.service.js';
 import PlayerDocuments from '../components/PlayerDocuments.vue';
+import { formatFolio } from '../utils/folio.js';
 
 const route  = useRoute();
 const router = useRouter();
@@ -150,6 +151,12 @@ const error   = playersStore.error;
 
 const categories = ref([]);
 const clubName   = ref('');
+
+const folioDisplay = computed(() => formatFolio({
+    clubFolio: player.value?.active_roster?.club_folio,
+    clubFolioDisplay: player.value?.active_roster?.club_folio_display,
+    birthDate: player.value?.birth_date,
+}));
 
 // Calcula edad en años a partir de birth_date
 const calcAge = (birthDate) => {

@@ -1,7 +1,12 @@
 <template>
   <div class="container mt-md">
     <div class="flex justify-between items-center mb-lg">
-      <h2>Torneos</h2>
+      <div>
+        <button v-if="scopedSeasonId" class="btn btn-secondary btn-sm mb-sm" @click="$router.push('/seasons')">
+          &larr; Temporadas
+        </button>
+        <h2>{{ scopedSeason ? `Torneos — ${scopedSeason.name}` : 'Torneos' }}</h2>
+      </div>
       <button class="btn" :class="viewMode === 'list' ? 'btn-primary' : 'btn-secondary'" @click="toggleViewMode">
         {{ viewMode === 'list' ? 'Nuevo Torneo' : 'Volver al listado' }}
       </button>
@@ -29,8 +34,33 @@
               </select>
             </div>
             <div class="input-group">
-              <label class="label">Temporada</label>
-              <input v-model="form.season" class="input" placeholder="2026" />
+              <label class="label">Tipo *</label>
+              <select v-model="form.type" class="input" required>
+                <option value="OFICIAL">Oficial</option>
+                <option value="AMISTOSO">Amistoso</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group" v-if="scopedSeasonId">
+            <label class="label">Temporada</label>
+            <input class="input" :value="scopedSeason?.name" disabled />
+          </div>
+          <div class="input-group" v-else>
+            <label class="label">Temporada *</label>
+            <div class="flex gap-sm">
+              <select v-model="form.season_id" class="input" required>
+                <option :value="null" disabled>Seleccione una temporada...</option>
+                <option v-for="s in seasons" :key="s.id" :value="s.id">{{ s.name }}</option>
+              </select>
+              <button type="button" class="btn btn-secondary btn-sm" @click="showNewSeasonForm = !showNewSeasonForm">
+                + Nueva
+              </button>
+            </div>
+            <div v-if="showNewSeasonForm" class="new-season-row">
+              <input v-model="newSeasonForm.name" class="input" placeholder="Nombre (ej: Temporada 2026)" />
+              <input v-model.number="newSeasonForm.year" type="number" class="input" placeholder="Año" style="max-width: 100px;" />
+              <button type="button" class="btn btn-primary btn-sm" @click="createNewSeason">Crear</button>
             </div>
           </div>
 
@@ -120,7 +150,7 @@
     <template v-if="viewMode === 'list'">
       <div class="card p-0">
         <div class="flex justify-between items-center p-md" style="border-bottom: 1px solid var(--border-color);">
-          <h3 class="m-0">Todos los torneos</h3>
+          <h3 class="m-0">{{ scopedSeason ? `Torneos de ${scopedSeason.name}` : 'Todos los torneos' }}</h3>
           <span class="text-muted text-sm">{{ items.length }} en total</span>
         </div>
 
@@ -130,22 +160,28 @@
               <tr>
                 <th>Nombre</th>
                 <th>Formato</th>
-                <th>Temporada</th>
+                <th>Tipo</th>
+                <th v-if="!scopedSeasonId">Temporada</th>
                 <th class="text-center">Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading && items.length === 0">
-                <td colspan="5" class="text-center py-lg">Cargando...</td>
+                <td colspan="6" class="text-center py-lg">Cargando...</td>
               </tr>
               <tr v-else-if="items.length === 0">
-                <td colspan="5" class="text-center py-lg">Aún no hay torneos creados.</td>
+                <td colspan="6" class="text-center py-lg">Aún no hay torneos creados.</td>
               </tr>
               <tr v-for="tournament in items" :key="tournament.id" class="clickable-row" @click="openTournament(tournament.id)">
                 <td><span class="font-medium">{{ tournament.name }}</span></td>
                 <td>{{ formatLabel(tournament.format) }}</td>
-                <td>{{ tournament.season || '—' }}</td>
+                <td>
+                  <span class="type-badge" :class="`type-badge--${tournament.type?.toLowerCase()}`">
+                    {{ typeLabel(tournament.type) }}
+                  </span>
+                </td>
+                <td v-if="!scopedSeasonId">{{ tournament.season?.name || '—' }}</td>
                 <td class="text-center">
                   <span class="status-badge" :class="`status-badge--${tournament.status?.toLowerCase()}`">
                     {{ statusLabel(tournament.status) }}
@@ -167,14 +203,21 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useTournamentsStore } from '../stores/tournaments';
 import { useAuthStore } from '../stores/auth';
+import { getSeasons, createSeason } from '../services/seasons.service.js';
 
+const route = useRoute();
 const router = useRouter();
 const { items, loading, error, fetchTournaments, createOrUpdateTournament, removeTournament } = useTournamentsStore();
 const authStore = useAuthStore();
+
+// Cuando se navega desde /seasons/:seasonId/tournaments, el torneo queda
+// acotado a esa temporada: se filtra el listado y el form fija season_id.
+const scopedSeasonId = computed(() => route.params.seasonId || null);
+const scopedSeason = computed(() => seasons.value.find(s => s.id === scopedSeasonId.value) || null);
 
 const viewMode = ref('list');
 
@@ -192,13 +235,47 @@ const STATUS_LABELS = {
   CANCELLED: 'Cancelado',
 };
 
+const TYPE_LABELS = {
+  OFICIAL: 'Oficial',
+  AMISTOSO: 'Amistoso',
+};
+
 const formatLabel = (v) => FORMAT_LABELS[v] || v;
 const statusLabel = (v) => STATUS_LABELS[v] || v;
+const typeLabel = (v) => TYPE_LABELS[v] || v;
+
+// ── Temporadas ──────────────────────────────────────────
+const seasons = ref([]);
+const showNewSeasonForm = ref(false);
+const newSeasonForm = reactive({ name: `Temporada ${new Date().getFullYear()}`, year: new Date().getFullYear() });
+
+const loadSeasons = async () => {
+  try {
+    const res = await getSeasons({ org_id: authStore.state.org?.id });
+    seasons.value = res.data?.data?.seasons ?? res.data?.seasons ?? [];
+  } catch (e) {
+    console.error('[TournamentsList] getSeasons error:', e);
+  }
+};
+
+const createNewSeason = async () => {
+  if (!newSeasonForm.name || !newSeasonForm.year) return;
+  try {
+    const res = await createSeason({ org_id: authStore.state.org?.id, name: newSeasonForm.name, year: newSeasonForm.year });
+    const season = res.data?.data?.season ?? res.data?.season;
+    seasons.value.unshift(season);
+    form.season_id = season.id;
+    showNewSeasonForm.value = false;
+  } catch (e) {
+    error.value = e.response?.data?.error?.message || 'Error al crear la temporada';
+  }
+};
 
 const defaultForm = () => ({
   name: '',
   format: 'ROUND_ROBIN',
-  season: '',
+  type: 'OFICIAL',
+  season_id: scopedSeasonId.value,
   start_date: '',
   end_date: '',
   rounds_type: 'SINGLE',
@@ -217,7 +294,9 @@ const defaultForm = () => ({
 const form = reactive(defaultForm());
 
 const loadTournaments = async () => {
-  await fetchTournaments({ org_id: authStore.state.org?.id, limit: 100 });
+  const params = { org_id: authStore.state.org?.id, limit: 100 };
+  if (scopedSeasonId.value) params.season_id = scopedSeasonId.value;
+  await fetchTournaments(params);
 };
 
 const toggleViewMode = () => {
@@ -231,10 +310,15 @@ const toggleViewMode = () => {
 
 const cancelForm = () => {
   Object.assign(form, defaultForm());
+  showNewSeasonForm.value = false;
   viewMode.value = 'list';
 };
 
 const saveTournament = async () => {
+  if (!form.season_id) {
+    error.value = 'Selecciona una temporada';
+    return;
+  }
   const payload = { ...form, org_id: authStore.state.org?.id };
   try {
     const tournament = await createOrUpdateTournament(payload);
@@ -257,6 +341,13 @@ const confirmDelete = async (tournament) => {
 const openTournament = (tournamentId) => router.push(`/tournaments/${tournamentId}`);
 
 onMounted(() => {
+  loadTournaments();
+  loadSeasons();
+});
+
+// La misma vista se usa en /tournaments y /seasons/:seasonId/tournaments —
+// si el usuario navega de una temporada a otra sin recargar, refresca el listado.
+watch(() => route.params.seasonId, () => {
   loadTournaments();
 });
 </script>
@@ -296,4 +387,23 @@ onMounted(() => {
 .status-badge--in_progress  { background: rgba(0, 230, 118, 0.14); color: var(--primary-solid, #00e676); }
 .status-badge--finished     { background: rgba(255, 213, 79, 0.16); color: #ffd54f; }
 .status-badge--cancelled    { background: rgba(239, 83, 80, 0.14); color: #ef5350; }
+
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.type-badge--oficial  { background: rgba(0, 230, 118, 0.14); color: var(--primary-solid, #00e676); }
+.type-badge--amistoso { background: rgba(79, 195, 247, 0.16); color: #4fc3f7; }
+
+.new-season-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 8px;
+  margin-top: 8px;
+}
 </style>
